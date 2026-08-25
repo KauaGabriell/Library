@@ -1,0 +1,9 @@
+#DOCS
+docs-dev
+
+# DEPS
+node_modules
+.pnpm-store
+
+#ENVIRONMENT
+.env
