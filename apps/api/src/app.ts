@@ -1,8 +1,15 @@
+import cors from "@fastify/cors";
 import Fastify from "fastify";
+import { envConfig } from "./config/env";
 import { prisma } from "./lib/prisma";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: true });
+
+app.register(cors, {
+  origin: envConfig.FRONTEND_URL,
+  credentials: true,
+});
 
 app.register(prismaPlugin);
 
