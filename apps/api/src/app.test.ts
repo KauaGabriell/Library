@@ -40,3 +40,13 @@ test("Database Health", async () => {
   expect(response.statusCode).toBe(200);
   expect(response.json()).toEqual({ database: "ok" });
 });
+
+function createUser(name: string, age: number) {
+  return { name, age };
+}
+
+test("Payload Inválido", () => {
+  const user = createUser("João", 12);
+
+  if (!user) throw new Error();
+});

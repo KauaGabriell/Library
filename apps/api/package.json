@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
+    "@library/contracts": "workspace:*",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "7.10.0",
     "dotenv": "^17.4.2",

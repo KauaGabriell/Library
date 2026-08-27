@@ -20,6 +20,9 @@ importers:
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0
+      '@library/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@prisma/adapter-pg':
         specifier: ^7.9.1
         version: 7.9.1
@@ -104,7 +107,11 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)
 
-  packages/contracts: {}
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
 
 packages:
 
