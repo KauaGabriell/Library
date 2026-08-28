@@ -60,11 +60,24 @@ jobs:
       - name: Aplicar migrations
         run: pnpm --filter @library/api exec prisma migrate deploy
 
+      - name: Criar banco de integração
+        env:
+          PGPASSWORD: library
+        run: psql -h localhost -U library -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE library_test"
+
+      - name: Aplicar migrations de integração
+        env:
+          DATABASE_URL: postgresql://library:library@localhost:5432/library_test
+        run: pnpm --filter @library/api exec prisma migrate deploy
+
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Testar Integração
+        run: pnpm --filter @library/api test:integration
 
       - name: Testar API
         run: pnpm --filter @library/api test --run
