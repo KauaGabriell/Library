@@ -52,6 +52,7 @@ export const authService = {
       ) {
         throw new AppError("Usuário já cadastrado", 409, "CONFLICT");
       }
+      throw error;
     }
   },
 };
