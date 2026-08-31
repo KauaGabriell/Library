@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { envConfig } from "./config/env";
 import { prisma } from "./lib/prisma";
 import { registerErrorHandler } from "./middlewares/errorHandling";
+import { authRoutes } from "./modules/auth/auth.routes";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: true });
@@ -13,6 +14,8 @@ app.register(cors, {
 });
 registerErrorHandler(app);
 app.register(prismaPlugin);
+
+app.register(authRoutes);
 
 app.get("/health", (_req, res) => {
   return res.send({ message: "API STATUS: OK" });
