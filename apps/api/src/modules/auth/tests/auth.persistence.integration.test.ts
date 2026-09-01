@@ -1,5 +1,6 @@
-import { afterAll, afterEach, beforeEach, expect, test } from "vitest";
-import { prisma } from "../../lib/prisma";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { app } from "../../../app";
+import { prisma } from "../../../lib/prisma";
 
 async function clearDatabase() {
   await prisma.session.deleteMany();
@@ -12,9 +13,11 @@ afterEach(clearDatabase);
 
 afterAll(async () => {
   await prisma.$disconnect();
+  await app.close();
 });
 
-test("rejects duplicate user email", async () => {
+describe("auth persistence", () => {
+  it("rejects duplicate user email", async () => {
   const email = "duplicate-email@example.com";
 
   await prisma.user.create({ data: { email } });
@@ -22,9 +25,9 @@ test("rejects duplicate user email", async () => {
   await expect(prisma.user.create({ data: { email } })).rejects.toMatchObject({
     code: "P2002",
   });
-});
+  });
 
-test("rejects duplicate OAuth account identity", async () => {
+  it("rejects duplicate OAuth account identity", async () => {
   const firstUser = await prisma.user.create({
     data: { email: "oauth-first@example.com" },
   });
@@ -49,9 +52,9 @@ test("rejects duplicate OAuth account identity", async () => {
       },
     }),
   ).rejects.toMatchObject({ code: "P2002" });
-});
+  });
 
-test("rejects session without an existing user", async () => {
+  it("rejects a session without an existing user", async () => {
   await expect(
     prisma.session.create({
       data: {
@@ -61,4 +64,5 @@ test("rejects session without an existing user", async () => {
       },
     }),
   ).rejects.toMatchObject({ code: "P2003" });
+  });
 });

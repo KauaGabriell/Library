@@ -7,11 +7,14 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "typecheck": "tsc --project tsconfig.json",
-    "test": "vitest --exclude \"src/**/*.integration.test.ts\"",
+    "test": "pnpm run test:unit",
+    "test:unit": "vitest run --exclude \"src/**/*.integration.test.ts\"",
     "test:integration": "vitest run --config vitest.integration.config.mts",
+    "test:all": "pnpm run test:unit && pnpm run test:integration",
     "test:watch": "vitest watch --exclude \"src/**/*.integration.test.ts\""
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
     "@library/contracts": "workspace:*",
     "@prisma/adapter-pg": "^7.9.1",

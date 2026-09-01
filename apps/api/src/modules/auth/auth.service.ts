@@ -16,14 +16,15 @@ export const authService = {
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        const userExists = await authRepository.findByEmail(tx, input.email);
+        const emailFormatted = input.email.trim().toLocaleLowerCase();
+        const userExists = await authRepository.findByEmail(tx, emailFormatted);
 
         if (userExists)
           throw new AppError("Usuário já cadastrado", 409, "CONFLICT");
 
         const user = await authRepository.createUser(tx, {
           ...(input.name !== undefined ? { name: input.name } : {}),
-          email: input.email,
+          email: emailFormatted,
           passwordHash: passwordHash,
         });
 
@@ -37,12 +38,12 @@ export const authService = {
           token,
           user: publicUserSchema.parse({
             id: user.id,
-            email: user.email,
+            email: input.email,
             name: user.name,
             avatarUrl: user.avatarUrl,
           }),
         };
-        return publicUser;
+        return { publicUser, expiresAt };
       });
       return result;
     } catch (error) {

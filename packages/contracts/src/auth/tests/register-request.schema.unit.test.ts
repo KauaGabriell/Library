@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { registerRequestSchema } from "./register.js";
+import { registerRequestSchema } from "../register.js";
 
 describe("registerRequestSchema", () => {
-  it("rejects password shorter than 12 characters", () => {
+  it("rejects a password shorter than 12 characters", () => {
     const result = registerRequestSchema.safeParse({
       name: null,
       email: "user@example.com",
@@ -11,7 +11,7 @@ describe("registerRequestSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts password with 12 chacaracters or more", () => {
+  it("accepts a password with 12 characters or more", () => {
     const result = registerRequestSchema.safeParse({
       name: "Kauã",
       email: "user@example.com",
