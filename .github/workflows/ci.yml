@@ -76,11 +76,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Testar Integração
-        run: pnpm --filter @library/api test:integration
+      - name: Testar unitários
+        run: pnpm test:unit
 
-      - name: Testar API
-        run: pnpm --filter @library/api test --run
+      - name: Testar integração
+        run: pnpm test:integration
 
       - name: Build frontend
         run: pnpm --filter @library/web build
