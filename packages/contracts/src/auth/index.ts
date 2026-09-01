@@ -1,3 +1,4 @@
+export { loginRequestInput, loginRequestSchema } from "./login.js";
 export type {
   PublicUser,
   RegisterRequestInput,

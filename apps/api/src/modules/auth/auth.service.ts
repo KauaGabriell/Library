@@ -1,4 +1,5 @@
 import {
+  type loginRequestInput,
   publicUserSchema,
   type RegisterRequestInput,
 } from "@library/contracts";
@@ -9,6 +10,10 @@ import { prisma } from "../../lib/prisma";
 import { authRepository } from "./auth.repository";
 import { createSessionToken } from "./sessionToken";
 
+function normalizeEmail(email: string) {
+  return email.trim().toLocaleLowerCase();
+}
+
 export const authService = {
   async createUser(input: RegisterRequestInput) {
     const passwordHash = await argon2.hash(input.password);
@@ -16,8 +21,11 @@ export const authService = {
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        const emailFormatted = input.email.trim().toLocaleLowerCase();
-        const userExists = await authRepository.findByEmail(tx, emailFormatted);
+        const emailFormatted = normalizeEmail(input.email);
+        const userExists = await authRepository.findByEmail(
+          prisma,
+          emailFormatted,
+        );
 
         if (userExists)
           throw new AppError("Usuário já cadastrado", 409, "CONFLICT");
@@ -55,5 +63,39 @@ export const authService = {
       }
       throw error;
     }
+  },
+
+  async login(input: loginRequestInput) {
+    const emailFormatted = normalizeEmail(input.email);
+    const user = await authRepository.findByEmail(prisma, emailFormatted);
+
+    if (!user?.passwordHash)
+      throw new AppError("Credenciais inválidas", 401, "UNAUTHENTICATED");
+
+    const passwordMatch = await argon2.verify(
+      user.passwordHash,
+      input.password,
+    );
+    if (!passwordMatch)
+      throw new AppError("Credenciais inválidas", 401, "UNAUTHENTICATED");
+
+    const { token, tokenHash, expiresAt } = createSessionToken();
+
+    await authRepository.createSession(prisma, {
+      userId: user.id,
+      tokenHash: tokenHash,
+      expiresAt: expiresAt,
+    });
+
+    const publicUser = {
+      token: token,
+      user: publicUserSchema.parse({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      }),
+    };
+    return { publicUser, expiresAt };
   },
 };

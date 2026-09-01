@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client/extension";
 import type { Prisma } from "../../generated/prisma/client";
 
 type CreateSessionData = {
@@ -12,9 +13,11 @@ type CreateUserData = {
   passwordHash: string;
 };
 
+type DatabaseClient = PrismaClient | Prisma.TransactionClient;
+
 export const authRepository = {
-  async findByEmail(tx: Prisma.TransactionClient, email: string) {
-    return tx.user.findUnique({
+  async findByEmail(db: DatabaseClient, email: string) {
+    return db.user.findUnique({
       where: {
         email: email,
       },
@@ -31,8 +34,8 @@ export const authRepository = {
     });
   },
 
-  async createSession(tx: Prisma.TransactionClient, data: CreateSessionData) {
-    return tx.session.create({
+  async createSession(db: DatabaseClient, data: CreateSessionData) {
+    return db.session.create({
       data: {
         userId: data.userId,
         tokenHash: data.tokenHash,

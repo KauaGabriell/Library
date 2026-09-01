@@ -1,7 +1,7 @@
-import { registerRequestSchema } from "@library/contracts";
+import { loginRequestSchema, registerRequestSchema } from "@library/contracts";
 import type { FastifyPluginAsync } from "fastify";
-import { envConfig } from "../../config/env";
 import { authService } from "./auth.service";
+import { setSessionCookie } from "./sessionCookies";
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post("/register", async (request, reply) => {
@@ -9,14 +9,18 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const result = await authService.createUser(input);
 
-    reply.setCookie("session", result.publicUser.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: envConfig.NODE_ENV === "production",
-      path: "/",
-      expires: result.expiresAt,
-    });
+    setSessionCookie(reply, result.publicUser.token, result.expiresAt);
 
     return reply.status(201).send(result.publicUser.user);
+  });
+
+  app.post("/login", async (request, reply) => {
+    const input = loginRequestSchema.parse(request.body);
+
+    const result = await authService.login(input);
+
+    setSessionCookie(reply, result.publicUser.token, result.expiresAt);
+
+    return reply.status(200).send(result.publicUser.user);
   });
 };

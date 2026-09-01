@@ -147,3 +147,156 @@ describe("POST /auth/register", () => {
     });
   });
 });
+
+describe("POST /auth/login", () => {
+  it("valid login returns 200, session cookie and public user.", async () => {
+    const password = "123456789123";
+    const passwordHash = await argon2.hash(password);
+
+    const seedUser = await prisma.user.create({
+      data: {
+        name: "seeduser",
+        email: "seeduser@example.com",
+        passwordHash,
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      path: "/auth/login",
+      payload: {
+        email: "Seeduser@example.com",
+        password: "123456789123",
+      },
+    });
+
+    const session = await prisma.session.findFirst({
+      where: { userId: seedUser.id },
+      select: { tokenHash: true },
+    });
+
+    const setCookie = response.headers["set-cookie"];
+    const token = response.cookies[0]?.value;
+
+    if (!session) throw new Error("Sessão não encontrada!");
+    if (!token) throw Error("Token não fornecido");
+
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+
+    expect(session.tokenHash).toBe(
+      createHash("sha256").update(token).digest("hex"),
+    );
+
+    expect(response.json()).toEqual({
+      id: expect.any(String),
+      name: "seeduser",
+      email: "seeduser@example.com",
+      avatarUrl: null,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).not.toHaveProperty("token");
+    expect(response.json()).not.toHaveProperty("password");
+    expect(response.json()).not.toHaveProperty("passwordHash");
+    expect(session.tokenHash).not.toBe(token);
+  });
+
+  it("returns 401 for invalid password", async () => {
+    const password = "123456789123";
+    const passwordHash = await argon2.hash(password);
+
+    const seedUser = await prisma.user.create({
+      data: {
+        name: "seeduser",
+        email: "seeduser@example.com",
+        passwordHash,
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      path: "/auth/login",
+      payload: {
+        email: "seeduser@example.com",
+        password: "123456789123456",
+      },
+    });
+    const session = await prisma.session.findFirst({
+      where: { userId: seedUser.id },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Credenciais inválidas",
+    });
+    expect(response.headers["set-cookie"]).toBeUndefined();
+    expect(session).toBeNull();
+  });
+
+  it("returns 401 for nonexistent email", async () => {
+    const password = "123456789123";
+    const passwordHash = await argon2.hash(password);
+
+    const seedUser = await prisma.user.create({
+      data: {
+        name: "seeduser",
+        email: "seeduser@example.com",
+        passwordHash,
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      path: "/auth/login",
+      payload: {
+        email: "seeduser123@example.com",
+        password: "123456789123",
+      },
+    });
+
+    const session = await prisma.session.findFirst({
+      where: { userId: seedUser.id },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Credenciais inválidas",
+    });
+    expect(response.headers["set-cookie"]).toBeUndefined();
+    expect(session).toBeNull();
+  });
+
+  it("returns 401 for oAuth account login", async () => {
+    const seedUser = await prisma.user.create({
+      data: {
+        name: "seeduser",
+        email: "seeduser@example.com",
+        passwordHash: null,
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      path: "/auth/login",
+      payload: {
+        email: "seeduser@example.com",
+        password: "123456789123",
+      },
+    });
+
+    const session = await prisma.session.findFirst({
+      where: { userId: seedUser.id },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Credenciais inválidas",
+    });
+    expect(response.headers["set-cookie"]).toBeUndefined();
+    expect(session).toBeNull();
+  });
+});
