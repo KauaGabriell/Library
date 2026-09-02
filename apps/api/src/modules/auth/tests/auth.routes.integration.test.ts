@@ -3,6 +3,7 @@ import * as argon2 from "argon2";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../../../app";
 import { prisma } from "../../../lib/prisma";
+import { hashToken } from "../sessionToken";
 
 async function clearDatabase() {
   await prisma.session.deleteMany();
@@ -298,5 +299,185 @@ describe("POST /auth/login", () => {
     });
     expect(response.headers["set-cookie"]).toBeUndefined();
     expect(session).toBeNull();
+  });
+});
+
+describe("GET /auth/me", () => {
+  it("valid session returns public user", async () => {
+    const token = "token-de-teste";
+
+    const tokenHash = hashToken(token);
+
+    const user = await prisma.user.create({
+      data: {
+        name: "userexample",
+        email: "test@example.com",
+        passwordHash: "hash-qualquer",
+      },
+    });
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        cookie: `session=${token}`,
+      },
+    });
+
+    expect(response.json()).toEqual({
+      id: expect.any(String),
+      email: "test@example.com",
+      name: "userexample",
+      avatarUrl: null,
+    });
+    expect(response.json()).not.toHaveProperty("token");
+    expect(response.json()).not.toHaveProperty("passwordHash");
+  });
+
+  it("returns 401 when no session cookie is provided", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHENTICATED",
+    });
+  });
+
+  it("returns 401 when session token does not exist", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        cookie: "session=token-que-nao-existe",
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHENTICATED",
+    });
+  });
+
+  it("returns 401 when session is expired", async () => {
+    const token = "token-de-sessao-expirada";
+    const user = await prisma.user.create({
+      data: {
+        email: "expired-session@example.com",
+        passwordHash: "hash-qualquer",
+      },
+    });
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() - 60_000),
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        cookie: `session=${token}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHENTICATED",
+    });
+  });
+
+  it("returns 401 when session is revoked", async () => {
+    const token = "token-de-sessao-revogada";
+    const user = await prisma.user.create({
+      data: {
+        email: "revoked-session@example.com",
+        passwordHash: "hash-qualquer",
+      },
+    });
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + 60_000),
+        revokedAt: new Date(),
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        cookie: `session=${token}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHENTICATED",
+    });
+  });
+});
+
+describe("POST /auth/logout", () => {
+  it("revokes session and blocks subsequent authenticated requests", async () => {
+    const token = "token-de-sessao-valida";
+    const tokenHash = hashToken(token);
+    const user = await prisma.user.create({
+      data: {
+        email: "logout@example.com",
+        passwordHash: "hash-qualquer",
+      },
+    });
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    const logoutResponse = await app.inject({
+      method: "POST",
+      url: "/auth/logout",
+      headers: {
+        cookie: `session=${token}`,
+      },
+    });
+
+    const revokedSession = await prisma.session.findUnique({
+      where: { tokenHash },
+      select: { revokedAt: true },
+    });
+
+    const meResponse = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        cookie: `session=${token}`,
+      },
+    });
+
+    expect(logoutResponse.statusCode).toBe(204);
+    expect(revokedSession?.revokedAt).toBeInstanceOf(Date);
+    expect(meResponse.statusCode).toBe(401);
+    expect(meResponse.json()).toMatchObject({
+      code: "UNAUTHENTICATED",
+    });
   });
 });
