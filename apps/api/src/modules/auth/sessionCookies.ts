@@ -14,3 +14,12 @@ export function setSessionCookie(
     expires: expiresAt,
   });
 }
+
+export function clearSessionCookie(reply: FastifyReply) {
+  return reply.clearCookie("session", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: envConfig.NODE_ENV === "production",
+    path: "/",
+  });
+}

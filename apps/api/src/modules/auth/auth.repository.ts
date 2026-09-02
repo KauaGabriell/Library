@@ -43,4 +43,24 @@ export const authRepository = {
       },
     });
   },
+
+  async findSession(db: DatabaseClient, tokenHash: string) {
+    return db.session.findUnique({
+      where: {
+        tokenHash: tokenHash,
+      },
+    });
+  },
+
+  async revokeSession(db: DatabaseClient, tokenHash: string) {
+    return db.session.updateMany({
+      where: {
+        tokenHash,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(Date.now()),
+      },
+    });
+  },
 };

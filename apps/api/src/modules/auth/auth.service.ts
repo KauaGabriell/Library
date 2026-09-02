@@ -8,7 +8,7 @@ import { AppError } from "../../errors/AppError";
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { authRepository } from "./auth.repository";
-import { createSessionToken } from "./sessionToken";
+import { createSessionToken, hashToken } from "./sessionToken";
 
 function normalizeEmail(email: string) {
   return email.trim().toLocaleLowerCase();
@@ -97,5 +97,17 @@ export const authService = {
       }),
     };
     return { publicUser, expiresAt };
+  },
+
+  async logout(tokenSession: string) {
+    const sessionTokenHashed = hashToken(tokenSession);
+    const session = await authRepository.findSession(
+      prisma,
+      sessionTokenHashed,
+    );
+
+    if (session === null) return;
+
+    await authRepository.revokeSession(prisma, session.tokenHash);
   },
 };

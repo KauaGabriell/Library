@@ -16,6 +16,7 @@ import { authRoutes } from "./modules/auth/auth.routes";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: loggerConfig });
+app.decorateRequest("user", null);
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
 
