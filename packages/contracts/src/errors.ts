@@ -17,4 +17,21 @@ const errorsSchema = z.object({
   fieldErrors: z.record(z.string(), z.array(z.string())).optional(),
 });
 
+const baseErrorSchema = z.object({
+  message: z.string(),
+});
+
+export const validationErrorSchema = baseErrorSchema.extend({
+  code: z.literal("VALIDATION_ERROR"),
+  fieldErrors: z.record(z.string(), z.array(z.string())),
+});
+
+export const conflictErrorSchema = baseErrorSchema.extend({
+  code: z.literal("CONFLICT"),
+});
+
+export const unauthenticatedErrorSchema = baseErrorSchema.extend({
+  code: z.literal("UNAUTHENTICATED"),
+});
+
 export { errorsSchema };

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
 import { ZodError, z } from "zod";
 import { AppError } from "../errors/AppError";
 
@@ -18,6 +19,28 @@ export function registerErrorHandler(app: FastifyInstance) {
         code: "VALIDATION_ERROR",
         message: "Dados inválidos",
         fieldErrors,
+      });
+    }
+
+    if (hasZodFastifySchemaValidationErrors(error)) {
+      const fieldErrors = error.validation.reduce<Record<string, string[]>>(
+        (accumulator, issue) => {
+          const field = issue.instancePath.replace(/^\//, "") || "form";
+          const message = issue.message ?? "Valor inválido";
+
+          const messages = accumulator[field] ?? [];
+          messages.push(message);
+
+          accumulator[field] = messages;
+
+          return accumulator;
+        },
+        {},
+      );
+      return reply.status(400).send({
+        code: "VALIDATION_ERROR",
+        message: "Dados inválidos",
+        fieldErrors: fieldErrors,
       });
     }
 
