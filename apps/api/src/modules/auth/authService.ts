@@ -8,7 +8,6 @@ import { AppError } from "../../errors/appError";
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { authRepository } from "./authRepository";
-import { createAuthorizationUrl } from "./google/googleOAuthAdapter";
 import { createSessionToken, hashToken } from "./sessionToken";
 
 function normalizeEmail(email: string) {
