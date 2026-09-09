@@ -8,6 +8,7 @@ import { AppError } from "../../errors/AppError";
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { authRepository } from "./auth.repository";
+import { createAuthorizationUrl } from "./google/googleOAuthAdapter";
 import { createSessionToken, hashToken } from "./sessionToken";
 
 function normalizeEmail(email: string) {
@@ -96,6 +97,7 @@ export const authService = {
         avatarUrl: user.avatarUrl,
       }),
     };
+    createAuthorizationUrl("teste", "teste");
     return { publicUser, expiresAt };
   },
 

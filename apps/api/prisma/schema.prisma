@@ -48,3 +48,16 @@ model Session {
   @@index([userId])
   @@map("sessions")
 }
+
+model OAuthAuthorization {
+  id           String        @id @default(uuid())
+  provider     OAuthProvider
+  stateHash    String        @unique @map("state_hash")
+  codeVerifier String        @map("code_verifier")
+  expiresAt    DateTime      @map("expires_at")
+  consumedAt   DateTime?     @map("consumed_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("oauth_authorizations")
+}
