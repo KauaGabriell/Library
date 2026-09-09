@@ -4,10 +4,10 @@ import {
   type RegisterRequestInput,
 } from "@library/contracts";
 import * as argon2 from "argon2";
-import { AppError } from "../../errors/AppError";
+import { AppError } from "../../errors/appError";
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
-import { authRepository } from "./auth.repository";
+import { authRepository } from "./authRepository";
 import { createAuthorizationUrl } from "./google/googleOAuthAdapter";
 import { createSessionToken, hashToken } from "./sessionToken";
 

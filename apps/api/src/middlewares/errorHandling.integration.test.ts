@@ -2,7 +2,7 @@ import { errorsSchema } from "@library/contracts";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { AppError } from "../errors/AppError";
+import { AppError } from "../errors/appError";
 import { registerErrorHandler } from "./errorHandling";
 
 const testApp = Fastify({ logger: false });

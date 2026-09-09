@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { publicUserSchema } from "@library/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { AppError } from "../errors/AppError";
+import { AppError } from "../errors/appError";
 import { prisma } from "../lib/prisma";
 
 export async function requireUser(

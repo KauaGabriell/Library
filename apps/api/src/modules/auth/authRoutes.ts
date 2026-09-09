@@ -9,9 +9,9 @@ import {
 import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
-import { AppError } from "../../errors/AppError";
+import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
-import { authService } from "./auth.service";
+import { authService } from "./authService";
 import { clearSessionCookie, setSessionCookie } from "./sessionCookies";
 
 export const authRoutes: FastifyPluginAsync = async (app) => {

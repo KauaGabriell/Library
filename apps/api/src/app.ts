@@ -12,7 +12,7 @@ import { envConfig } from "./config/env";
 import { loggerConfig } from "./config/fastify/fastifyLoggerConfig";
 import { prisma } from "./lib/prisma";
 import { registerErrorHandler } from "./middlewares/errorHandling";
-import { authRoutes } from "./modules/auth/auth.routes";
+import { authRoutes } from "./modules/auth/authRoutes";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: loggerConfig });
