@@ -10,11 +10,11 @@ export type GoogleTokens = {
   accessToken: string;
 };
 
-export interface GoogleOAuthAdapater {
+export interface GoogleOAuthAdapter {
   createAuthorizationUrl(input: { state: string; codeChallenge: string }): string;
   exchangeCode(input: {
     code: string;
     codeVerifier: string;
   }): Promise<GoogleTokens>;
-  getProfile(acessToken: string): Promise<GoogleProfile>;
+  getProfile(accessToken: string): Promise<GoogleProfile>;
 }

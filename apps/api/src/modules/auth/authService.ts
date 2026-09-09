@@ -97,7 +97,6 @@ export const authService = {
         avatarUrl: user.avatarUrl,
       }),
     };
-    createAuthorizationUrl("teste", "teste");
     return { publicUser, expiresAt };
   },
 
