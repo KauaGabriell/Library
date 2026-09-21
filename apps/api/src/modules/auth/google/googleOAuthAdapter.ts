@@ -7,7 +7,17 @@ const googleTokenResponseSchema = z.object({
   access_token: z.string().min(1),
 });
 
+const googleProfileSchema = z.object({
+  sub: z.string(),
+  email: z.email(),
+  email_verified: z.boolean(),
+  name: z.string().optional(),
+  picture: z.string().optional(),
+});
+
 const googleTokenEndpoint = "https://oauth2.googleapis.com/token";
+const googleGetProfileEndpoint =
+  "https://openidconnect.googleapis.com/v1/userinfo";
 const googleRequestTimeoutMs = 5_000;
 
 function createGoogleIntegrationError() {
@@ -65,5 +75,34 @@ export async function exchangeCode(input: {
     if (error instanceof AppError) throw error;
 
     throw createGoogleIntegrationError();
+  }
+}
+
+export async function getProfile(accessToken: string) {
+  try {
+    const response = await fetch(googleGetProfileEndpoint, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(googleRequestTimeoutMs),
+    });
+
+    if (!response.ok) throw createGoogleIntegrationError();
+
+    const data: unknown = await response.json();
+    const profileResult = googleProfileSchema.safeParse(data);
+
+    if (!profileResult.success) throw createGoogleIntegrationError();
+
+    return {
+      providerAccountId: profileResult.data.sub,
+      email: profileResult.data.email,
+      emailVerified: profileResult.data.email_verified,
+      name: profileResult.data.name ?? null,
+      avatarUrl: profileResult.data.picture ?? null,
+    };
+  } catch (error) {
+    if (error instanceof AppError) throw createGoogleIntegrationError();
+
+    throw error;
   }
 }

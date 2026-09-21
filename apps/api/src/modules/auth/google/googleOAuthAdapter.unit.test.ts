@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { envConfig } from "../../../config/env";
-import { createAuthorizationUrl, exchangeCode } from "./googleOAuthAdapter";
+import {
+  createAuthorizationUrl,
+  exchangeCode,
+  getProfile,
+} from "./googleOAuthAdapter";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -85,6 +89,87 @@ describe("Google OAuth adapter", () => {
     await expect(
       exchangeCode({ code: "authorization-code", codeVerifier: "code-verifier" }),
     ).rejects.toMatchObject({
+      statusCode: 502,
+      code: "INTEGRATION_ERROR",
+    });
+  });
+
+  it("maps a Google profile to the internal profile contract", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          sub: "google-user-id",
+          email: "user@example.com",
+          email_verified: true,
+          name: "Google User",
+          picture: "https://example.com/avatar.png",
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getProfile("google-access-token")).resolves.toEqual({
+      providerAccountId: "google-user-id",
+      email: "user@example.com",
+      emailVerified: true,
+      name: "Google User",
+      avatarUrl: "https://example.com/avatar.png",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openidconnect.googleapis.com/v1/userinfo",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer google-access-token" },
+      }),
+    );
+  });
+
+  it("maps an omitted Google name and picture to null", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            sub: "google-user-id",
+            email: "user@example.com",
+            email_verified: true,
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(getProfile("google-access-token")).resolves.toEqual({
+      providerAccountId: "google-user-id",
+      email: "user@example.com",
+      emailVerified: true,
+      name: null,
+      avatarUrl: null,
+    });
+  });
+
+  it("throws an integration error when Google rejects the profile request", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+
+    await expect(getProfile("invalid-access-token")).rejects.toMatchObject({
+      statusCode: 502,
+      code: "INTEGRATION_ERROR",
+    });
+  });
+
+  it("throws an integration error when Google returns an invalid profile", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ email: "user@example.com" }), {
+          status: 200,
+        }),
+      ),
+    );
+
+    await expect(getProfile("google-access-token")).rejects.toMatchObject({
       statusCode: 502,
       code: "INTEGRATION_ERROR",
     });
