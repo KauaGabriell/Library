@@ -23,6 +23,7 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 10_000,
     include: ["src/**/*.integration.test.ts"],
+    setupFiles: ["./vitest.setup.ts"],
     testTimeout: 10_000,
   },
 });
