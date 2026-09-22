@@ -1,5 +1,6 @@
 import {
   conflictErrorSchema,
+  googleCallbackQuerySchema,
   loginRequestSchema,
   publicUserSchema,
   registerRequestSchema,
@@ -9,6 +10,7 @@ import {
 import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
+import { envConfig } from "../../config/env";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
 import { authService } from "./authService";
@@ -96,6 +98,33 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
       clearSessionCookie(reply);
       reply.status(204).send();
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().get("/google", {
+    schema: {
+      tags: ["Auth"],
+      summary: "Inicia autenticação do Google OAuth",
+    },
+    handler: async (_request, reply) => {
+      const url = await authService.startGoogleOAuth();
+
+      reply.redirect(url);
+    },
+  });
+  app.withTypeProvider<ZodTypeProvider>().get("/google/callback", {
+    schema: {
+      tags: ["Auth"],
+      summary: "Completa Autenticação do Google com OAuth",
+      querystring: googleCallbackQuerySchema,
+    },
+    handler: async (request, reply) => {
+      const { code, state } = googleCallbackQuerySchema.parse(request.query);
+
+      const result = await authService.completeGoogleOAuth({ code, state });
+      setSessionCookie(reply, result.token, result.expiresAt);
+
+      return reply.redirect(`${envConfig.FRONTEND_OAUTH_CALLBACK_URL}`);
     },
   });
 };

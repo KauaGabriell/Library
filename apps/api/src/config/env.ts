@@ -6,6 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive(),
   DATABASE_URL: z.url(),
   FRONTEND_URL: z.url(),
+  FRONTEND_OAUTH_CALLBACK_URL: z.url(),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URI: z.url(),

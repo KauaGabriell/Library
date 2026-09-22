@@ -101,8 +101,8 @@ export async function getProfile(accessToken: string) {
       avatarUrl: profileResult.data.picture ?? null,
     };
   } catch (error) {
-    if (error instanceof AppError) throw createGoogleIntegrationError();
+    if (error instanceof AppError) throw error;
 
-    throw error;
+    throw createGoogleIntegrationError();
   }
 }
