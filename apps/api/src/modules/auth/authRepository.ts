@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client/extension";
-import type { Prisma } from "../../generated/prisma/client";
+import type { OAuthProvider, Prisma } from "../../generated/prisma/client";
 
 type CreateSessionData = {
   userId: string;
@@ -8,9 +8,29 @@ type CreateSessionData = {
 };
 
 type CreateUserData = {
-  name?: string;
+  name?: string | null;
   email: string;
-  passwordHash: string;
+  passwordHash?: string | null;
+  avatarUrl?: string | null;
+};
+
+type CreateOAuthAccountData = {
+  provider: OAuthProvider;
+  providerAccountId: string;
+  userId: string;
+};
+
+type GoogleAuthorizationData = {
+  provider: OAuthProvider;
+  stateHash: string;
+  codeVerifier: string;
+  expiresAt: Date;
+};
+
+type ConsumeOAuthAuthorizationData = {
+  provider: OAuthProvider;
+  stateHash: string;
+  now: Date;
 };
 
 type DatabaseClient = PrismaClient | Prisma.TransactionClient;
@@ -24,12 +44,41 @@ export const authRepository = {
     });
   },
 
+  async findOAuthAccountWithUser(
+    db: DatabaseClient,
+    data: { provider: OAuthProvider; providerAccountId: string },
+  ) {
+    return db.oAuthAccount.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: data.provider,
+          providerAccountId: data.providerAccountId,
+        },
+      },
+      select: { user: true },
+    });
+  },
+
+  async createOAuthAccount(
+    tx: Prisma.TransactionClient,
+    data: CreateOAuthAccountData,
+  ) {
+    return tx.oAuthAccount.create({
+      data: {
+        provider: data.provider,
+        providerAccountId: data.providerAccountId,
+        userId: data.userId,
+      },
+    });
+  },
+
   async createUser(tx: Prisma.TransactionClient, data: CreateUserData) {
     return tx.user.create({
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
         email: data.email,
-        passwordHash: data.passwordHash,
+        passwordHash: data.passwordHash ?? null,
+        avatarUrl: data.avatarUrl ?? null,
       },
     });
   },
@@ -62,5 +111,40 @@ export const authRepository = {
         revokedAt: new Date(Date.now()),
       },
     });
+  },
+
+  async createOAuthAuthorization(
+    db: DatabaseClient,
+    data: GoogleAuthorizationData,
+  ) {
+    return db.oAuthAuthorization.create({
+      data: {
+        provider: data.provider,
+        stateHash: data.stateHash,
+        codeVerifier: data.codeVerifier,
+        expiresAt: data.expiresAt,
+      },
+    });
+  },
+
+  async consumeOAuthAuthorization(
+    db: DatabaseClient,
+    data: ConsumeOAuthAuthorizationData,
+  ) {
+    const result = await db.oAuthAuthorization.updateManyAndReturn({
+      where: {
+        provider: data.provider,
+        stateHash: data.stateHash,
+        consumedAt: null,
+        expiresAt: {
+          gt: data.now,
+        },
+      },
+      data: {
+        consumedAt: data.now,
+      },
+    });
+
+    return result[0] ?? null;
   },
 };
