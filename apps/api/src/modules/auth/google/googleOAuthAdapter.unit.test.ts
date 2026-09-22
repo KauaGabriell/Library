@@ -55,6 +55,12 @@ describe("Google OAuth adapter", () => {
     expect(requestBody.get("code")).toBe("authorization-code");
     expect(requestBody.get("code_verifier")).toBe("code-verifier");
     expect(requestBody.get("client_id")).toBe(envConfig.GOOGLE_CLIENT_ID);
+    expect(requestBody.get("client_secret")).toBe(
+      envConfig.GOOGLE_CLIENT_SECRET,
+    );
+    expect(requestBody.get("redirect_uri")).toBe(
+      envConfig.GOOGLE_REDIRECT_URI,
+    );
     expect(requestBody.get("grant_type")).toBe("authorization_code");
   });
 
@@ -167,6 +173,18 @@ describe("Google OAuth adapter", () => {
           status: 200,
         }),
       ),
+    );
+
+    await expect(getProfile("google-access-token")).rejects.toMatchObject({
+      statusCode: 502,
+      code: "INTEGRATION_ERROR",
+    });
+  });
+
+  it("throws an integration error when the Google profile request fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network failure")),
     );
 
     await expect(getProfile("google-access-token")).rejects.toMatchObject({
