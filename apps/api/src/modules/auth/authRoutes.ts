@@ -3,6 +3,7 @@ import {
   googleCallbackQuerySchema,
   loginRequestSchema,
   publicUserSchema,
+  rateLimitErrorSchema,
   registerRequestSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,
@@ -11,6 +12,10 @@ import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
 import { envConfig } from "../../config/env";
+import {
+  loginRateLimit,
+  signUpAndCallbackRateLimit,
+} from "../../config/fastify/authRateLimitConfig";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
 import { authService } from "./authService";
@@ -18,6 +23,9 @@ import { clearSessionCookie, setSessionCookie } from "./sessionCookies";
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   app.withTypeProvider<ZodTypeProvider>().post("/register", {
+    config: {
+      rateLimit: signUpAndCallbackRateLimit,
+    },
     schema: {
       tags: ["Auth"],
       summary: "Registra usuário local",
@@ -26,6 +34,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         201: publicUserSchema,
         400: validationErrorSchema,
         409: conflictErrorSchema,
+        429: rateLimitErrorSchema,
       },
     },
     handler: async (request, reply) => {
@@ -40,6 +49,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.withTypeProvider<ZodTypeProvider>().post("/login", {
+    config: {
+      rateLimit: loginRateLimit,
+    },
     schema: {
       tags: ["Auth"],
       summary: "Autentica usuário local",
@@ -48,6 +60,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         200: publicUserSchema,
         400: validationErrorSchema,
         401: unauthenticatedErrorSchema,
+        429: rateLimitErrorSchema,
       },
     },
     handler: async (request, reply) => {
@@ -113,10 +126,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
   });
   app.withTypeProvider<ZodTypeProvider>().get("/google/callback", {
+    config: {
+      rateLimit: signUpAndCallbackRateLimit,
+    },
     schema: {
       tags: ["Auth"],
       summary: "Completa Autenticação do Google com OAuth",
       querystring: googleCallbackQuerySchema,
+      response: {
+        429: rateLimitErrorSchema,
+      },
     },
     handler: async (request, reply) => {
       const { code, state } = googleCallbackQuerySchema.parse(request.query);

@@ -7,6 +7,7 @@ export const errorsCodeList = [
   "CONFLICT",
   "INTEGRATION_ERROR",
   "INTERNAL_ERROR",
+  "RATE_LIMITED",
 ] as const;
 
 export type ErrorCode = (typeof errorsCodeList)[number];
@@ -32,6 +33,11 @@ export const conflictErrorSchema = baseErrorSchema.extend({
 
 export const unauthenticatedErrorSchema = baseErrorSchema.extend({
   code: z.literal("UNAUTHENTICATED"),
+});
+
+export const rateLimitErrorSchema = baseErrorSchema.extend({
+  message: z.literal("Muitas tentativas. Tente novamente mais tarde."),
+  code: z.literal("RATE_LIMITED"),
 });
 
 export { errorsSchema };

@@ -12,6 +12,18 @@ export function registerErrorHandler(app: FastifyInstance) {
       });
     }
 
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      error.statusCode === 429
+    ) {
+      return reply.status(429).send({
+        code: "RATE_LIMITED",
+        message: "Muitas tentativas. Tente novamente mais tarde.",
+      });
+    }
+
     if (error instanceof ZodError) {
       const { fieldErrors } = z.flattenError(error);
 

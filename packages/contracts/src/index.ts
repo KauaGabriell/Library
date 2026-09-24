@@ -4,6 +4,7 @@ export {
   conflictErrorSchema,
   errorsCodeList,
   errorsSchema,
+  rateLimitErrorSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,
 } from "./errors.js";

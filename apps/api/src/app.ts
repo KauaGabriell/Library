@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import fastifyRateLimit from "@fastify/rate-limit";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import Fastify from "fastify";
@@ -44,6 +45,19 @@ app.register(cors, {
 registerErrorHandler(app);
 app.register(prismaPlugin);
 app.register(cookie);
+app.register(fastifyRateLimit, {
+  global: false,
+  addHeaders: {
+    "retry-after": true,
+  },
+  errorResponseBuilder() {
+    return {
+      statusCode: 429,
+      code: "RATE_LIMITED",
+      message: "Muitas tentativas. Tente novamente mais tarde.",
+    };
+  },
+});
 
 app.register(authRoutes, { prefix: "/auth" });
 
