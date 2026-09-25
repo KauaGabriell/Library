@@ -7,7 +7,7 @@
 | Produto | Library |
 | Versão | MVP 1.0 |
 | Status | Aprovado para implementação |
-| Última atualização | 2026-08-25 |
+| Última atualização | 2026-09-25 |
 | Responsável | Mantenedor do projeto |
 | Stakeholders | Engenharia, QA, portfólio e avaliadores técnicos |
 | Estágio | MVP |
@@ -23,7 +23,7 @@ Leitores mantêm lista de desejos, andamento, avaliações e reflexões em ferra
 
 ### Solução proposta
 
-Library é uma biblioteca pessoal web: usuário autentica, encontra livros no Google Books, salva-os em uma estante individual, muda o status de leitura, registra nota/resenha/anotações privadas, acompanha uma meta anual privada e recebe três recomendações explicadas por quiz guiado com IA.
+Library é uma biblioteca pessoal web: usuário autentica, procura livros primeiro no Google Books e pode cadastrá-los manualmente quando não encontra uma opção adequada. Depois, salva-os em uma estante individual, muda o status de leitura, registra nota/resenha/anotações privadas, acompanha uma meta anual privada e recebe três recomendações explicadas por quiz guiado com IA.
 
 ### Resultados esperados
 
@@ -68,9 +68,10 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 
 1. Usuário digita termo de busca.
 2. Web consulta catálogo Google Books normalizado.
-3. Usuário vê capa, título e autores e escolhe salvar.
-4. API cria/recupera `Book` canônico e cria `LibraryEntry` pessoal em `WANT_TO_READ`.
-5. Web atualiza biblioteca e dashboard; duplicata retorna feedback claro.
+3. Usuário escolhe um resultado adequado ou, se não encontrar o livro, seleciona cadastro manual.
+4. No fluxo Google Books, API usa o identificador Google para criar/recuperar `Book` canônico. No manual, API cria um `Book` com título obrigatório e demais metadados opcionais informados pelo usuário.
+5. API cria `LibraryEntry` pessoal em `WANT_TO_READ`; a mesma obra Google não pode ser adicionada duas vezes à biblioteca do usuário. Cadastros manuais repetidos são permitidos e geram registros distintos.
+6. Web atualiza biblioteca e dashboard; duplicata Google retorna feedback claro.
 
 ### Fluxo C — Acompanhar e refletir
 
@@ -101,6 +102,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 - Como visitante, quero criar conta local para guardar uma biblioteca privada.
 - Como visitante, quero usar Google para entrar com menos atrito.
 - Como leitor, quero pesquisar catálogo confiável para registrar livros reais.
+- Como leitor, quero cadastrar manualmente um livro que não encontrei no Google Books, para manter minha biblioteca completa.
 - Como leitor, quero controlar estado de leitura para entender minha fila e progresso.
 - Como leitor, quero registrar anotações enquanto leio e após concluir, para preservar reflexões no momento em que surgem.
 - Como leitor, quero acompanhar a página atual de um livro em leitura, para retomar meu progresso sem cálculo manual.
@@ -126,7 +128,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 | RF-002 | Login local/logout/sessão | Must | Credencial válida cria sessão; sessão expirada/revogada falha; logout invalida acesso posterior. |
 | RF-003 | Login Google | Must | OAuth usa state/PKCE; e-mail verificado cria/vincula conta; callback inválido não cria sessão. |
 | RF-004 | Busca de catálogo | Must | Termo válido retorna itens normalizados, paginados; erro externo retorna código recuperável. |
-| RF-005 | Adicionar livro | Must | Mesmo livro pode existir para usuários distintos; mesma dupla user/book não duplica LibraryEntry. |
+| RF-005 | Adicionar livro | Must | Usuário pode adicionar resultado Google Books ou cadastrar manualmente quando não encontrar opção adequada. O ID Google é único quando informado; a mesma obra Google não duplica LibraryEntry do usuário. Registros manuais duplicados são permitidos e criam Books distintos. Todo novo item inicia em `WANT_TO_READ` e `currentPage = 0`. |
 | RF-006 | Gerir biblioteca | Must | Usuário lista, filtra, atualiza status, página atual quando estiver `READING` e remove apenas suas entradas. |
 | RF-007 | Avaliar e resenhar | Must | Rating inteiro entre 1–5 e review só são aceitos se estado resultante for `READ`. |
 | RF-008 | Gerir anotações | Must | Criar/editar/excluir Note só é permitido ao owner de LibraryEntry em `READING` ou `READ`; `WANT_TO_READ` bloqueia mutação. |
@@ -207,10 +209,12 @@ User 1──N ReadingGoal
 | User | id, email, passwordHash?, name?, avatarUrl?, timestamps | email único |
 | OAuthAccount | userId, provider, providerAccountId | provider + providerAccountId único |
 | Session | userId, tokenHash, expiresAt, revokedAt? | tokenHash único; sessão expira |
-| Book | googleBooksId, title, authors, description?, coverUrl?, language?, pageCount? | googleBooksId único |
+| Book | googleBooksId?, title, authors, description?, coverUrl?, language?, pageCount? | `googleBooksId` opcional e único quando presente; vários Books manuais sem ID Google podem ter metadados iguais |
 | LibraryEntry | userId, bookId, status, currentPage?, rating?, review?, timestamps | userId + bookId único; currentPage entre 0 e Book.pageCount quando conhecido |
-| Note | libraryEntryId, content, timestamps | herda owner pela entrada |
+| Note | libraryEntryId, content, timestamps | herda owner pela entrada; `content` limitado a 10.000 caracteres por anotação |
 | ReadingGoal | userId, year, targetBooks, timestamps | userId + year único; targetBooks 1–999 |
+
+No cadastro manual, `title` é obrigatório; `authors`, `description`, `coverUrl`, `language` e `pageCount` são opcionais. Se `authors` não for informado, o registro persiste uma lista vazia.
 
 ### Contratos HTTP de alto nível
 
@@ -221,7 +225,7 @@ User 1──N ReadingGoal
 | `POST /auth/logout` / `GET /auth/me` | sessão | sim |
 | `GET /auth/google` e callback | início/retorno OAuth | não |
 | `GET /books/search` | catálogo paginado | não |
-| `GET/POST /library` | listar/adicionar biblioteca | sim |
+| `GET/POST /library` | listar/adicionar livro do Google Books ou manual à biblioteca | sim |
 | `GET/PATCH/DELETE /library/:id` | detalhe/gestão | sim |
 | `POST /library/:id/notes` | criar anotação | sim |
 | `PATCH/DELETE /notes/:id` | gerir anotação | sim |
