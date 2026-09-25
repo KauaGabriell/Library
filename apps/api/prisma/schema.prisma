@@ -11,16 +11,24 @@ enum OAuthProvider {
   GOOGLE
 }
 
+enum ReadingState {
+  WANT_TO_READ
+  READING
+  READ
+}
+
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  passwordHash  String?
-  name          String?
-  avatarUrl     String?
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  oauthAccounts OAuthAccount[]
-  sessions      Session[]
+  id             String         @id @default(uuid())
+  email          String         @unique
+  passwordHash   String?
+  name           String?
+  avatarUrl      String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  oauthAccounts  OAuthAccount[]
+  sessions       Session[]
+  libraryEntries LibraryEntry[]
+  readingGoals   ReadingGoal[]
 
   @@map("users")
 }
@@ -60,4 +68,64 @@ model OAuthAuthorization {
 
   @@index([expiresAt])
   @@map("oauth_authorizations")
+}
+
+model Book {
+  id             String         @id @default(uuid())
+  googleBooksId  String         @unique
+  title          String
+  authors        String[]
+  description    String?
+  coverUrl       String?        @map("cover_url")
+  language       String?
+  pageCount      Int?           @map("page_count")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  libraryEntries LibraryEntry[]
+
+  @@map("books")
+}
+
+model LibraryEntry {
+  id          String       @id @default(uuid())
+  user        User         @relation(fields: [userId], references: [id])
+  book        Book         @relation(fields: [bookId], references: [id])
+  status      ReadingState
+  currentPage Int?         @default(0) @map("current_page")
+  rating      Int?
+  review      String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  bookId      String
+  userId      String
+  notes       Note[]
+
+  @@unique([bookId, userId])
+  @@index([userId, status, updatedAt])
+  @@map("library_entries")
+}
+
+model Note {
+  id             String       @id @default(uuid())
+  libraryEntry   LibraryEntry @relation(fields: [libraryEntryId], references: [id], onDelete: Cascade)
+  content        String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  libraryEntryId String
+
+  @@map("notes")
+}
+
+model ReadingGoal {
+  id          String   @id @default(uuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  year        Int
+  targetBooks Int      @map("target_books")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, year])
+  @@index([userId, year])
+  @@map("reading_goals")
 }
