@@ -1,11 +1,11 @@
 import {
   type BookPublicResponse,
-  type LibraryEntryDetailsPublicResponse,
-  type LibraryEntryCreateInput,
-  type LibraryEntryListResponse,
-  type LibraryEntryListQuery,
-  type LibraryEntryPublicResponse,
   bookPublicResponse,
+  type LibraryEntryCreateInput,
+  type LibraryEntryDetailsPublicResponse,
+  type LibraryEntryListQuery,
+  type LibraryEntryListResponse,
+  type LibraryEntryPublicResponse,
   libraryEntryCreateSchema,
   libraryEntryDetailPublicResponseSchema,
   libraryEntryListResponseSchema,
@@ -18,6 +18,7 @@ describe("library entry public exports", () => {
   it("exports create and list schemas through contracts entry point", () => {
     const createInput = {
       googleBooksId: "google-book-123",
+      source: "GOOGLE_BOOKS",
     } satisfies LibraryEntryCreateInput;
     const listQuery = {
       status: "READING",
@@ -27,8 +28,54 @@ describe("library entry public exports", () => {
 
     expect(libraryEntryCreateSchema.parse(createInput)).toEqual(createInput);
     expect(
-      libraryEntryListSchema.parse({ status: "READING", page: "2", pageSize: "20" }),
+      libraryEntryListSchema.parse({
+        status: "READING",
+        page: "2",
+        pageSize: "20",
+      }),
     ).toEqual(listQuery);
+  });
+
+  it("accepts Google Books input with only its source and ID", () => {
+    const input = {
+      source: "GOOGLE_BOOKS",
+      googleBooksId: "google-book-123",
+    } as const;
+
+    expect(libraryEntryCreateSchema.parse(input)).toEqual(input);
+  });
+
+  it.each([
+    ["missing Google Books ID", { source: "GOOGLE_BOOKS" }],
+    ["client-provided catalog metadata", {
+      source: "GOOGLE_BOOKS",
+      googleBooksId: "google-book-123",
+      title: "Client title",
+    }],
+    ["unknown source", { source: "OTHER", title: "Manual title" }],
+    ["manual input without title", { source: "MANUAL" }],
+  ])("rejects invalid book creation input: %s", (_caseName, input) => {
+    expect(libraryEntryCreateSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("defaults omitted manual authors to an empty array", () => {
+    expect(
+      libraryEntryCreateSchema.parse({ source: "MANUAL", title: "Manual title" }),
+    ).toEqual({ source: "MANUAL", title: "Manual title", authors: [] });
+  });
+
+  it("accepts optional manual book metadata", () => {
+    const input = {
+      source: "MANUAL",
+      title: "Manual title",
+      authors: ["Author"],
+      description: "Description",
+      coverUrl: "https://example.com/cover.jpg",
+      language: "pt-BR",
+      pageCount: 240,
+    } as const;
+
+    expect(libraryEntryCreateSchema.parse(input)).toEqual(input);
   });
 
   it("defaults to first page and ten items", () => {
@@ -80,7 +127,9 @@ describe("library entry public exports", () => {
 
     expect(bookPublicResponse.parse(book)).toEqual(book);
     expect(libraryEntryPublicResponseSchema.parse(entry)).toEqual(entry);
-    expect(libraryEntryDetailPublicResponseSchema.parse(detail)).toEqual(detail);
+    expect(libraryEntryDetailPublicResponseSchema.parse(detail)).toEqual(
+      detail,
+    );
     expect(libraryEntryListResponseSchema.parse(list)).toEqual(list);
   });
 });

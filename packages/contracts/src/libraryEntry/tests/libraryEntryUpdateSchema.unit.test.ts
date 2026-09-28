@@ -31,7 +31,9 @@ describe("libraryEntryUpdateSchema public export", () => {
   });
 
   it("rejects an empty review", () => {
-    expect(libraryEntryUpdateSchema.safeParse({ review: "" }).success).toBe(false);
+    expect(libraryEntryUpdateSchema.safeParse({ review: "" }).success).toBe(
+      false,
+    );
   });
 
   it.each([0, 6, 4.5])("rejects rating %s", (rating) => {
@@ -39,6 +41,8 @@ describe("libraryEntryUpdateSchema public export", () => {
   });
 
   it.each([-1, 1.5])("rejects currentPage %s", (currentPage) => {
-    expect(libraryEntryUpdateSchema.safeParse({ currentPage }).success).toBe(false);
+    expect(libraryEntryUpdateSchema.safeParse({ currentPage }).success).toBe(
+      false,
+    );
   });
 });

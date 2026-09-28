@@ -1,7 +1,9 @@
 export {
-  type BookInput,
   type BookPublicResponse,
   bookPublicResponse,
-  bookSchema,
+  type GoogleBookInput,
+  googleBookSchema,
+  type ManualBookInput,
+  manualBookSchema,
 } from "./bookSchema.js";
 export { type ReadingState, readingStateSchema } from "./readingState.js";

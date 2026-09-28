@@ -1,6 +1,6 @@
 export {
   type NoteInput,
-  type PublicNoteResponse,
   noteSchema,
+  type PublicNoteResponse,
   publicNoteResponseSchema,
 } from "./notes.js";

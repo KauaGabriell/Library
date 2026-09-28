@@ -3,9 +3,25 @@ import { bookPublicResponse } from "../book/bookSchema.js";
 import { readingStateSchema } from "../book/readingState.js";
 import { publicNoteResponseSchema } from "../notes/notes.js";
 
-export const libraryEntryCreateSchema = z.object({
+const googleCreateSchema = z.strictObject({
+  source: z.literal("GOOGLE_BOOKS"),
   googleBooksId: z.string().min(1),
 });
+
+const manualCreateSchema = z.strictObject({
+  source: z.literal("MANUAL"),
+  title: z.string().min(1),
+  authors: z.array(z.string()).default([]),
+  description: z.string().optional(),
+  coverUrl: z.string().optional(),
+  language: z.string().optional(),
+  pageCount: z.int().optional(),
+});
+
+export const libraryEntryCreateSchema = z.discriminatedUnion("source", [
+  googleCreateSchema,
+  manualCreateSchema,
+]);
 
 export const libraryEntryListSchema = z.object({
   status: readingStateSchema.optional(),
@@ -17,7 +33,7 @@ export const libraryEntryUpdateSchema = z.object({
   status: readingStateSchema.optional(),
   currentPage: z.int().min(0).optional(),
   rating: z.int().min(1).max(5).optional(),
-  review: z.string().min(1).nullable().optional()
+  review: z.string().min(1).nullable().optional(),
 });
 
 export const libraryEntryPublicResponseSchema = z.object({
@@ -43,6 +59,7 @@ export const libraryEntryListResponseSchema = z.object({
 });
 
 export type LibraryEntryCreateInput = z.infer<typeof libraryEntryCreateSchema>;
+
 export type LibraryEntryListQuery = z.infer<typeof libraryEntryListSchema>;
 export type LibraryEntryUpdateInput = z.infer<typeof libraryEntryUpdateSchema>;
 
