@@ -1,4 +1,8 @@
-import type { LibraryEntryCreateInput } from "@library/contracts";
+import type {
+  BookSearchQuery,
+  BookSearchResponse,
+  LibraryEntryCreateInput,
+} from "@library/contracts";
 import { type BooksRepository, booksRepository } from "./booksRepository";
 import type { GoogleBooksCatalog } from "./googleBooksCatalog";
 import { createGoogleBooksCatalog } from "./googleBooksCatalogAdapter";
@@ -31,6 +35,19 @@ export function createBooksService({
         input.googleBooksId,
         metadata,
       );
+    },
+
+    async searchBook({
+      q,
+      page,
+      pageSize,
+    }: BookSearchQuery): Promise<BookSearchResponse> {
+      const result = await googleBooksCatalog.search({ q, page, pageSize });
+      return {
+        items: result.items,
+        page: page,
+        nextPage: result.hasMore ? page + 1 : null,
+      };
     },
   };
 }
