@@ -1,3 +1,5 @@
+import type { BookSearchItem, BookSearchQuery } from "@library/contracts";
+
 export type GoogleBookMetadata = {
   title: string;
   authors: string[];
@@ -7,6 +9,16 @@ export type GoogleBookMetadata = {
   pageCount: number | null;
 };
 
+export type GoogleBooksSearchResult = {
+  items: BookSearchItem[];
+  hasMore: boolean;
+};
+
 export interface GoogleBooksCatalog {
   getById(googleBooksId: string): Promise<GoogleBookMetadata>;
+  search({
+    q,
+    page,
+    pageSize,
+  }: BookSearchQuery): Promise<GoogleBooksSearchResult>;
 }

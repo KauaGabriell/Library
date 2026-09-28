@@ -23,6 +23,7 @@ const createdIds = {
 function createCatalog() {
   return {
     getById: vi.fn<GoogleBooksCatalog["getById"]>(),
+    search: vi.fn<GoogleBooksCatalog["search"]>(),
   } satisfies GoogleBooksCatalog;
 }
 
