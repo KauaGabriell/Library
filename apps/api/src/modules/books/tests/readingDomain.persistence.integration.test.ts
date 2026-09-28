@@ -28,6 +28,14 @@ async function createBook() {
   return book;
 }
 
+async function createManualBook(title: string) {
+  const book = await prisma.book.create({
+    data: { googleBooksId: null, title },
+  });
+  createdIds.books.push(book.id);
+  return book;
+}
+
 async function createLibraryEntry(userId: string, bookId: string) {
   const entry = await createTestLibraryEntry({ userId, bookId });
   createdIds.libraryEntries.push(entry.id);
@@ -65,6 +73,36 @@ afterAll(async () => {
 });
 
 describe("reading domain persistence", () => {
+  it("keeps Google Books IDs unique when present", async () => {
+    const book = await createBook();
+
+    await expect(
+      prisma.book.create({
+        data: {
+          googleBooksId: book.googleBooksId,
+          title: "Duplicate Google book",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "P2002" });
+
+    await expect(
+      prisma.book.count({ where: { googleBooksId: book.googleBooksId } }),
+    ).resolves.toBe(1);
+  });
+
+  it("allows duplicate manual books and defaults authors to an empty array", async () => {
+    const title = `Manual duplicate ${crypto.randomUUID()}`;
+
+    const firstBook = await createManualBook(title);
+    const secondBook = await createManualBook(title);
+
+    expect(firstBook.id).not.toBe(secondBook.id);
+    expect(firstBook.googleBooksId).toBeNull();
+    expect(secondBook.googleBooksId).toBeNull();
+    expect(firstBook.authors).toEqual([]);
+    expect(secondBook.authors).toEqual([]);
+  });
+
   it("allows the same book in different users' libraries", async () => {
     const book = await createBook();
     const firstUser = await createUser();

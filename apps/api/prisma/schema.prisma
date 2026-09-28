@@ -72,9 +72,9 @@ model OAuthAuthorization {
 
 model Book {
   id             String         @id @default(uuid())
-  googleBooksId  String         @unique
+  googleBooksId  String?        @unique
   title          String
-  authors        String[]
+  authors        String[]       @default([])
   description    String?
   coverUrl       String?        @map("cover_url")
   language       String?

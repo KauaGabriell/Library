@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "books" ALTER COLUMN "googleBooksId" DROP NOT NULL,
+ALTER COLUMN "authors" SET DEFAULT ARRAY[]::TEXT[];
