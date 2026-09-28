@@ -1,6 +1,7 @@
 import type { LibraryEntryCreateInput } from "@library/contracts";
-import type { BooksRepository } from "./booksRepository";
+import { type BooksRepository, booksRepository } from "./booksRepository";
 import type { GoogleBooksCatalog } from "./googleBooksCatalog";
+import { createGoogleBooksCatalog } from "./googleBooksCatalogAdapter";
 
 type BooksServiceDependencies = {
   repository: BooksRepository;
@@ -33,3 +34,8 @@ export function createBooksService({
     },
   };
 }
+
+export const booksService = createBooksService({
+  repository: booksRepository,
+  googleBooksCatalog: createGoogleBooksCatalog(),
+});
