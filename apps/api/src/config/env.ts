@@ -11,6 +11,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URI: z.url(),
   OAUTH_AUTHORIZATION_TTL_SECONDS: z.coerce.number().int().min(60).max(600),
+  GOOGLE_BOOKS_API_KEY: z.string().min(1),
 });
 
 const envConfig = envSchema.parse(process.env);

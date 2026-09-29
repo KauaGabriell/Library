@@ -1,5 +1,6 @@
 import type { BookSearchQuery } from "@library/contracts";
 import { safeParse, z } from "zod";
+import { envConfig } from "../../config/env";
 import { AppError } from "../../errors/appError";
 import type {
   GoogleBookMetadata,
@@ -22,8 +23,12 @@ const googleVolumeInfoSchema = z.object({
     })
     .optional(),
   language: z.string().optional(),
-  pageCount: z.number().int().positive().optional(),
+  pageCount: z.number().int().nonnegative().optional(),
 });
+
+function normalizePageCount(pageCount: number | undefined): number | null {
+  return pageCount === undefined || pageCount === 0 ? null : pageCount;
+}
 
 const googleVolumeResponseSchema = z.object({
   volumeInfo: googleVolumeInfoSchema,
@@ -44,7 +49,7 @@ const googleVolumesSearchResponseSchema = z.object({
 export function createGoogleBooksCatalog({
   fetchImpl = fetch,
   timeoutMs = 5_000,
-}: GoogleBooksCatalogDependencies = {}) {
+}: GoogleBooksCatalogDependencies) {
   return {
     async getById(googleBooksId: string): Promise<GoogleBookMetadata> {
       try {
@@ -54,6 +59,9 @@ export function createGoogleBooksCatalog({
 
         const response = await fetchImpl(url, {
           signal: AbortSignal.timeout(timeoutMs),
+          headers: {
+            "X-Goog-Api-Key": envConfig.GOOGLE_BOOKS_API_KEY,
+          },
         });
         if (response.ok === false)
           throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
@@ -78,7 +86,7 @@ export function createGoogleBooksCatalog({
             null,
           description: volumeInfo.description ?? null,
           language: volumeInfo.language ?? null,
-          pageCount: volumeInfo.pageCount ?? null,
+          pageCount: normalizePageCount(volumeInfo.pageCount),
         };
       } catch {
         throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
@@ -97,13 +105,16 @@ export function createGoogleBooksCatalog({
           startIndex: String((page - 1) * pageSize),
         });
         const url = new URL(
-          `https://www.googleapis.com/books/v1/volumes?q=${params}`,
+          `https://www.googleapis.com/books/v1/volumes?${params}`,
         );
 
         const startIndex = Number(url.searchParams.get("startIndex"));
 
         const response = await fetchImpl(url, {
           signal: AbortSignal.timeout(timeoutMs),
+          headers: {
+            "X-Goog-Api-Key": envConfig.GOOGLE_BOOKS_API_KEY,
+          },
         });
 
         if (response.ok === false)
@@ -112,8 +123,9 @@ export function createGoogleBooksCatalog({
         const book = await response.json();
         const parsedBook = safeParse(googleVolumesSearchResponseSchema, book);
 
-        if (parsedBook.success === false)
+        if (parsedBook.success === false) {
           throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
+        }
 
         const items = parsedBook.data.items.map((item) => {
           return {
@@ -126,7 +138,7 @@ export function createGoogleBooksCatalog({
               null,
             description: item.volumeInfo.description ?? null,
             language: item.volumeInfo.language ?? null,
-            pageCount: item.volumeInfo.pageCount ?? null,
+            pageCount: normalizePageCount(item.volumeInfo.pageCount),
           };
         });
 

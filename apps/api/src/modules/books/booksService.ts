@@ -54,5 +54,5 @@ export function createBooksService({
 
 export const booksService = createBooksService({
   repository: booksRepository,
-  googleBooksCatalog: createGoogleBooksCatalog(),
+  googleBooksCatalog: createGoogleBooksCatalog({}),
 });
