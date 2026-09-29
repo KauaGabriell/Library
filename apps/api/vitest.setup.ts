@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 process.env.NODE_ENV ??= "test";
 process.env.PORT ??= "3001";
 process.env.DATABASE_URL ??=
@@ -10,3 +12,4 @@ process.env.GOOGLE_CLIENT_SECRET ??= "test-client-secret";
 process.env.GOOGLE_REDIRECT_URI ??=
   "http://localhost:3001/auth/google/callback";
 process.env.OAUTH_AUTHORIZATION_TTL_SECONDS ??= "300";
+process.env.GOOGLE_BOOKS_API_KEY = "test-google-books-api-key";

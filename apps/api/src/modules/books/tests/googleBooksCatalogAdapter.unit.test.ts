@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGoogleBooksCatalog } from "../googleBooksCatalogAdapter";
 
+const apiKey = "test-google-books-api-key";
+
 function createFetchMock(response: Response) {
   return vi.fn<typeof fetch>().mockResolvedValue(response);
 }
@@ -22,6 +24,85 @@ afterEach(() => {
 });
 
 describe("Google Books catalog adapter", () => {
+  it("searches with encoded pagination params and maps results", async () => {
+    const query = "Dune & science fiction";
+    const fetchMock = createFetchMock(
+      createResponse({
+        totalItems: 21,
+        items: [
+          {
+            id: "google-book-id",
+            volumeInfo: {
+              title: "Dune",
+              authors: ["Frank Herbert"],
+              description: "A science fiction novel.",
+              imageLinks: {
+                thumbnail: "https://books.example/dune.jpg",
+              },
+              language: "en",
+              pageCount: 412,
+            },
+          },
+        ],
+      }),
+    );
+    const catalog = createGoogleBooksCatalog({ fetchImpl: fetchMock });
+
+    await expect(
+      catalog.search({ q: query, page: 2, pageSize: 10 }),
+    ).resolves.toEqual({
+      items: [
+        {
+          googleBooksId: "google-book-id",
+          title: "Dune",
+          authors: ["Frank Herbert"],
+          description: "A science fiction novel.",
+          coverUrl: "https://books.example/dune.jpg",
+          language: "en",
+          pageCount: 412,
+        },
+      ],
+      hasMore: true,
+    });
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(requestUrl.searchParams.get("q")).toBe(query);
+    expect(requestUrl.searchParams.get("startIndex")).toBe("10");
+    expect(requestUrl.searchParams.get("maxResults")).toBe("10");
+    expect(requestUrl.searchParams.has("key")).toBe(false);
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("X-Goog-Api-Key")).toBe(apiKey);
+  });
+
+  it("maps zero page count to null without rejecting search results", async () => {
+    const fetchMock = createFetchMock(
+      createResponse({
+        totalItems: 2,
+        items: [
+          {
+            id: "zero-pages",
+            volumeInfo: { title: "Unknown pages", pageCount: 0 },
+          },
+          {
+            id: "known-pages",
+            volumeInfo: { title: "Known pages", pageCount: 128 },
+          },
+        ],
+      }),
+    );
+    const catalog = createGoogleBooksCatalog({ fetchImpl: fetchMock });
+
+    await expect(
+      catalog.search({ q: "books", page: 1, pageSize: 10 }),
+    ).resolves.toMatchObject({
+      items: [
+        { googleBooksId: "zero-pages", pageCount: null },
+        { googleBooksId: "known-pages", pageCount: 128 },
+      ],
+      hasMore: false,
+    });
+  });
+
   it("fetches a volume by encoded ID and maps complete metadata", async () => {
     const googleBooksId = "book/id with spaces?edition=1";
     const fetchMock = createFetchMock(
@@ -51,10 +132,26 @@ describe("Google Books catalog adapter", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      `https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(googleBooksId)}`,
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(requestUrl.pathname).toBe(
+      `/books/v1/volumes/${encodeURIComponent(googleBooksId)}`,
     );
+    expect(requestUrl.searchParams.has("key")).toBe(false);
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("X-Goog-Api-Key")).toBe(apiKey);
     expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("maps zero page count to null when fetching a volume by ID", async () => {
+    const fetchMock = createFetchMock(
+      createResponse({ volumeInfo: { title: "Unknown pages", pageCount: 0 } }),
+    );
+    const catalog = createGoogleBooksCatalog({ fetchImpl: fetchMock });
+
+    await expect(catalog.getById("zero-pages")).resolves.toMatchObject({
+      title: "Unknown pages",
+      pageCount: null,
+    });
   });
 
   it("maps omitted authors and metadata to their fallbacks", async () => {
