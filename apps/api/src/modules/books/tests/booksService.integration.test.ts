@@ -253,7 +253,7 @@ describe("booksService.addToLibrary", () => {
 
     await expect(
       booksService.addToLibrary(user.id, googleBooksInput(googleBooksId)),
-    ).rejects.toMatchObject({ code: "P2002" });
+    ).rejects.toMatchObject({ code: "CONFLICT", statusCode: 409 });
 
     await expect(
       prisma.libraryEntry.count({ where: { userId: user.id } }),
