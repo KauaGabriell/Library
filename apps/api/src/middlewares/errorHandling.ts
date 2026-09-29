@@ -2,6 +2,47 @@ import type { FastifyInstance } from "fastify";
 import { hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
 import { ZodError, z } from "zod";
 import { AppError } from "../errors/appError";
+import { Prisma } from "../generated/prisma/client";
+
+export function isDuplicateLibraryEntry(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+
+  const metadata = error.meta as
+    | {
+        modelName?: string;
+        target?: unknown;
+        driverAdapterError?: {
+          cause?: { constraint?: { fields?: unknown } };
+        };
+      }
+    | undefined;
+
+  if (metadata?.modelName !== "LibraryEntry") {
+    return false;
+  }
+
+  const fields =
+    metadata.target ?? metadata.driverAdapterError?.cause?.constraint?.fields;
+
+  if (!Array.isArray(fields)) {
+    return fields === "library_entries_bookId_userId_key";
+  }
+
+  const normalizedFields = fields.map((field) =>
+    typeof field === "string" ? field.replaceAll('"', "") : field,
+  );
+
+  return (
+    normalizedFields.length === 2 &&
+    normalizedFields.includes("bookId") &&
+    normalizedFields.includes("userId")
+  );
+}
 
 export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((error, request, reply) => {
