@@ -1,7 +1,6 @@
 import { bookSearchResponseSchema, bookSearchSchema } from "@library/contracts";
 import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
-
 import { booksService } from "./booksService";
 
 export const bookRoutes: FastifyPluginAsync = async (app) => {
