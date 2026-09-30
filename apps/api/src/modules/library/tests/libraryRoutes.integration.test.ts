@@ -11,7 +11,11 @@ import {
 import { app } from "../../../app";
 import { AppError } from "../../../errors/appError";
 import { prisma } from "../../../lib/prisma";
-import { createUser } from "../../../test/factories";
+import {
+  createBook,
+  createLibraryEntry,
+  createUser,
+} from "../../../test/factories";
 
 const catalogMock = vi.hoisted(() => ({
   getById: vi.fn(),
@@ -23,6 +27,7 @@ vi.mock("../../books/googleBooksCatalogAdapter", () => ({
 }));
 
 const users = new Set<string>();
+const createdBookIds = new Set<string>();
 const googleBooksIds = new Set<string>();
 const manualTitles = new Set<string>();
 
@@ -59,6 +64,22 @@ function mockGoogleBook() {
   });
 }
 
+async function createLibraryFixture(
+  userId: string,
+  status: "WANT_TO_READ" | "READING" | "READ" = "WANT_TO_READ",
+) {
+  const book = await createBook({ title: `Fixture ${randomUUID()}` });
+  createdBookIds.add(book.id);
+
+  const entry = await createLibraryEntry({
+    userId,
+    bookId: book.id,
+    status,
+  });
+
+  return { book, entry };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -70,6 +91,7 @@ afterEach(async () => {
   await prisma.book.deleteMany({
     where: {
       OR: [
+        { id: { in: [...createdBookIds] } },
         { googleBooksId: { in: [...googleBooksIds] } },
         { title: { in: [...manualTitles] } },
       ],
@@ -78,6 +100,7 @@ afterEach(async () => {
   await prisma.session.deleteMany({ where: { userId: { in: [...users] } } });
   await prisma.user.deleteMany({ where: { id: { in: [...users] } } });
   users.clear();
+  createdBookIds.clear();
   googleBooksIds.clear();
   manualTitles.clear();
 });
@@ -288,5 +311,216 @@ describe("POST /library", () => {
     expect(
       await prisma.libraryEntry.count({ where: { userId: user.id } }),
     ).toBe(0);
+  });
+});
+
+describe("GET /library", () => {
+  it("rejects requests without a session", async () => {
+    const response = await app.inject({ method: "GET", url: "/library" });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Não autenticado",
+    });
+  });
+
+  it("returns only the authenticated user's entries in the public shape", async () => {
+    const owner = await authenticatedUser();
+    const anotherUser = await authenticatedUser();
+    const ownFixture = await createLibraryFixture(owner.user.id, "READING");
+    const otherFixture = await createLibraryFixture(
+      anotherUser.user.id,
+      "READING",
+    );
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library",
+      headers: { cookie: owner.cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      items: [
+        {
+          id: ownFixture.entry.id,
+          status: "READING",
+          currentPage: 0,
+          rating: null,
+          review: null,
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          book: {
+            googleBooksId: ownFixture.book.googleBooksId,
+            title: ownFixture.book.title,
+            authors: ownFixture.book.authors,
+            description: ownFixture.book.description,
+            coverUrl: ownFixture.book.coverUrl,
+            language: ownFixture.book.language,
+            pageCount: ownFixture.book.pageCount,
+          },
+        },
+      ],
+      page: 1,
+      pageSize: 10,
+    });
+    expect(response.json().items[0].id).not.toBe(otherFixture.entry.id);
+    expect(response.json().items[0]).not.toHaveProperty("userId");
+    expect(response.json().items[0]).not.toHaveProperty("bookId");
+    expect(response.json().items[0].book).not.toHaveProperty("id");
+    expect(Date.parse(response.json().items[0].createdAt)).not.toBeNaN();
+    expect(Date.parse(response.json().items[0].updatedAt)).not.toBeNaN();
+  });
+
+  it("filters entries by status", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const reading = await createLibraryFixture(user.id, "READING");
+    const read = await createLibraryFixture(user.id, "READ");
+    await createLibraryFixture(user.id, "WANT_TO_READ");
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library?status=READING",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response.json().items.map((item: { id: string }) => item.id),
+    ).toEqual([reading.entry.id]);
+    expect(
+      response
+        .json()
+        .items.every((item: { status: string }) => item.status === "READING"),
+    ).toBe(true);
+    expect(
+      response.json().items.map((item: { id: string }) => item.id),
+    ).not.toContain(read.entry.id);
+  });
+
+  it("uses default pagination values", async () => {
+    const { user, cookie } = await authenticatedUser();
+    await createLibraryFixture(user.id);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ page: 1, pageSize: 10 });
+  });
+
+  it("returns the requested page and page size", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const fixtures = await Promise.all([
+      createLibraryFixture(user.id),
+      createLibraryFixture(user.id),
+      createLibraryFixture(user.id),
+    ]);
+
+    const firstPage = await app.inject({
+      method: "GET",
+      url: "/library?page=1&pageSize=2",
+      headers: { cookie },
+    });
+    const secondPage = await app.inject({
+      method: "GET",
+      url: "/library?page=2&pageSize=2",
+      headers: { cookie },
+    });
+
+    expect(firstPage.statusCode).toBe(200);
+    expect(firstPage.json()).toMatchObject({ page: 1, pageSize: 2 });
+    expect(firstPage.json().items).toHaveLength(2);
+    expect(secondPage.statusCode).toBe(200);
+    expect(secondPage.json()).toMatchObject({ page: 2, pageSize: 2 });
+    expect(secondPage.json().items).toHaveLength(1);
+
+    const firstPageIds = firstPage
+      .json()
+      .items.map((item: { id: string }) => item.id);
+    const secondPageIds = secondPage
+      .json()
+      .items.map((item: { id: string }) => item.id);
+    expect(firstPageIds).not.toContain(secondPageIds[0]);
+    expect([...firstPageIds, ...secondPageIds].sort()).toEqual(
+      fixtures.map(({ entry }) => entry.id).sort(),
+    );
+  });
+
+  it("orders by most recently updated, then by ID for ties", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const books = await Promise.all([
+      createBook({ title: `Sort fixture ${randomUUID()}` }),
+      createBook({ title: `Sort fixture ${randomUUID()}` }),
+      createBook({ title: `Sort fixture ${randomUUID()}` }),
+    ]);
+    books.forEach((book) => {
+      createdBookIds.add(book.id);
+    });
+
+    const [olderBook, tiedHighIdBook, tiedLowIdBook] = books;
+    const olderId = "00000000-0000-4000-8000-000000000003";
+    const tiedHighId = "00000000-0000-4000-8000-000000000002";
+    const tiedLowId = "00000000-0000-4000-8000-000000000001";
+    const olderDate = new Date("2026-09-01T00:00:00.000Z");
+    const newerDate = new Date("2026-09-02T00:00:00.000Z");
+
+    await prisma.libraryEntry.createMany({
+      data: [
+        {
+          id: olderId,
+          userId: user.id,
+          bookId: olderBook.id,
+          status: "READING",
+          updatedAt: olderDate,
+        },
+        {
+          id: tiedHighId,
+          userId: user.id,
+          bookId: tiedHighIdBook.id,
+          status: "READING",
+          updatedAt: newerDate,
+        },
+        {
+          id: tiedLowId,
+          userId: user.id,
+          bookId: tiedLowIdBook.id,
+          status: "READING",
+          updatedAt: newerDate,
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library?status=READING",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response.json().items.map((item: { id: string }) => item.id),
+    ).toEqual([tiedLowId, tiedHighId, olderId]);
+  });
+
+  it.each([
+    ["invalid status", "status=INVALID"],
+    ["page below minimum", "page=0"],
+    ["page size above maximum", "pageSize=201"],
+  ])("returns a validation error for %s", async (_description, query) => {
+    const { cookie } = await authenticatedUser();
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/library?${query}`,
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
   });
 });
