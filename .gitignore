@@ -5,5 +5,12 @@ docs-dev
 node_modules
 .pnpm-store
 
+# GRAPHIFY
+graphify-out/
+
 #ENVIRONMENT
 .env
+
+#IA
+.codex
+AGENTS.MD
