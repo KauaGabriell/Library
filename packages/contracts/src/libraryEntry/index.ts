@@ -9,6 +9,7 @@ export {
   libraryEntryDetailPublicResponseSchema,
   libraryEntryListResponseSchema,
   libraryEntryListSchema,
+  libraryEntryQuerySchema,
   libraryEntryPublicResponseSchema,
   libraryEntryUpdateSchema,
 } from "./libraryEntry.js";

@@ -31,18 +31,38 @@ describe("libraryEntryUpdateSchema public export", () => {
   });
 
   it("rejects an empty review", () => {
-    expect(libraryEntryUpdateSchema.safeParse({ review: "" }).success).toBe(
-      false,
-    );
+    const result = libraryEntryUpdateSchema.safeParse({ review: "" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "A resenha não pode estar vazia",
+      );
+    }
   });
 
-  it.each([0, 6, 4.5])("rejects rating %s", (rating) => {
-    expect(libraryEntryUpdateSchema.safeParse({ rating }).success).toBe(false);
+  it.each([
+    [0, "A avaliação deve ser no mínimo 1"],
+    [6, "A avaliação não pode ser maior que 5"],
+    [4.5, "A avaliação deve ser um número inteiro"],
+  ])("returns a specific message for rating %s", (rating, message) => {
+    const result = libraryEntryUpdateSchema.safeParse({ rating });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(message);
+    }
   });
 
-  it.each([-1, 1.5])("rejects currentPage %s", (currentPage) => {
-    expect(libraryEntryUpdateSchema.safeParse({ currentPage }).success).toBe(
-      false,
-    );
+  it.each([
+    [-1, "A página atual não pode ser negativa"],
+    [1.5, "A página atual deve ser um número inteiro"],
+  ])("returns a specific message for currentPage %s", (currentPage, message) => {
+    const result = libraryEntryUpdateSchema.safeParse({ currentPage });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(message);
+    }
   });
 });

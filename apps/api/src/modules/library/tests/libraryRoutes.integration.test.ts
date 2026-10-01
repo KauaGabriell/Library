@@ -67,14 +67,28 @@ function mockGoogleBook() {
 async function createLibraryFixture(
   userId: string,
   status: "WANT_TO_READ" | "READING" | "READ" = "WANT_TO_READ",
+  options: {
+    pageCount?: number | null;
+    currentPage?: number | null;
+    rating?: number | null;
+    review?: string | null;
+  } = {},
 ) {
-  const book = await createBook({ title: `Fixture ${randomUUID()}` });
+  const book = await createBook({
+    title: `Fixture ${randomUUID()}`,
+    ...(options.pageCount !== undefined && { pageCount: options.pageCount }),
+  });
   createdBookIds.add(book.id);
 
   const entry = await createLibraryEntry({
     userId,
     bookId: book.id,
     status,
+    ...(options.currentPage !== undefined && {
+      currentPage: options.currentPage,
+    }),
+    ...(options.rating !== undefined && { rating: options.rating }),
+    ...(options.review !== undefined && { review: options.review }),
   });
 
   return { book, entry };
@@ -518,6 +532,216 @@ describe("GET /library", () => {
       method: "GET",
       url: `/library?${query}`,
       headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
+describe("PATCH /library/:id", () => {
+  it("rejects requests without a session", async () => {
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${randomUUID()}`,
+      payload: { status: "READING" },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Não autenticado",
+    });
+  });
+
+  it("updates partially and returns the public entry shape", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { book, entry } = await createLibraryFixture(user.id, "READ", {
+      pageCount: 240,
+      currentPage: 240,
+      rating: 4,
+      review: "Resenha anterior",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: { review: "Resenha atualizada" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      id: entry.id,
+      status: "READ",
+      currentPage: 240,
+      rating: 4,
+      review: "Resenha atualizada",
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
+      book: {
+        googleBooksId: book.googleBooksId,
+        title: book.title,
+        authors: book.authors,
+        description: book.description,
+        coverUrl: book.coverUrl,
+        language: book.language,
+        pageCount: book.pageCount,
+      },
+    });
+    expect(response.json()).not.toHaveProperty("userId");
+    expect(response.json()).not.toHaveProperty("bookId");
+    expect(response.json().book).not.toHaveProperty("id");
+    expect(Date.parse(response.json().createdAt)).not.toBeNaN();
+    expect(Date.parse(response.json().updatedAt)).not.toBeNaN();
+
+    const savedEntry = await prisma.libraryEntry.findUniqueOrThrow({
+      where: { id: entry.id },
+    });
+    expect(savedEntry).toMatchObject({
+      status: "READ",
+      currentPage: 240,
+      rating: 4,
+      review: "Resenha atualizada",
+    });
+  });
+
+  it("allows completing a reading and setting its evaluation together", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { entry } = await createLibraryFixture(user.id, "READING", {
+      pageCount: 240,
+      currentPage: 240,
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: {
+        status: "READ",
+        rating: 5,
+        review: "Leitura concluída",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: entry.id,
+      status: "READ",
+      currentPage: 240,
+      rating: 5,
+      review: "Leitura concluída",
+    });
+    expect(
+      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).toMatchObject({ status: "READ", rating: 5, review: "Leitura concluída" });
+  });
+
+  it("rejects an invalid body without changing the entry", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { entry } = await createLibraryFixture(user.id, "READ", {
+      rating: 4,
+      review: "Resenha preservada",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: { rating: 6 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(
+      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).toMatchObject({ status: "READ", rating: 4, review: "Resenha preservada" });
+  });
+
+  it.each([
+    {
+      description: "progress outside READING",
+      status: "WANT_TO_READ" as const,
+      options: { pageCount: 100 },
+      patch: { currentPage: 20 },
+    },
+    {
+      description: "progress greater than known page count",
+      status: "READING" as const,
+      options: { pageCount: 100 },
+      patch: { currentPage: 101 },
+    },
+    {
+      description: "rating when resulting status is not READ",
+      status: "READING" as const,
+      options: {},
+      patch: { rating: 4 },
+    },
+  ])("rejects $description without persisting the patch", async (scenario) => {
+    const { user, cookie } = await authenticatedUser();
+    const { entry } = await createLibraryFixture(
+      user.id,
+      scenario.status,
+      scenario.options,
+    );
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: scenario.patch,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(
+      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).toMatchObject({
+      status: entry.status,
+      currentPage: entry.currentPage,
+      rating: entry.rating,
+      review: entry.review,
+    });
+  });
+
+  it("returns the same not-found response for foreign and missing entries", async () => {
+    const owner = await authenticatedUser();
+    const otherUser = await authenticatedUser();
+    const { entry } = await createLibraryFixture(otherUser.user.id);
+
+    const foreignResponse = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie: owner.cookie },
+      payload: { status: "READ" },
+    });
+    const missingResponse = await app.inject({
+      method: "PATCH",
+      url: `/library/${randomUUID()}`,
+      headers: { cookie: owner.cookie },
+      payload: { status: "READ" },
+    });
+
+    expect(foreignResponse.statusCode).toBe(404);
+    expect(missingResponse.statusCode).toBe(404);
+    expect(foreignResponse.json()).toEqual(missingResponse.json());
+    expect(foreignResponse.json()).toEqual({
+      code: "NOT_FOUND",
+      message: "Leitura não encontrada",
+    });
+    expect(
+      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).toMatchObject({ status: "WANT_TO_READ", currentPage: 0 });
+  });
+
+  it("rejects an invalid entry ID", async () => {
+    const { cookie } = await authenticatedUser();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/library/not-a-uuid",
+      headers: { cookie },
+      payload: { status: "READING" },
     });
 
     expect(response.statusCode).toBe(400);

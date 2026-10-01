@@ -6,6 +6,7 @@ export {
   conflictErrorSchema,
   errorsCodeList,
   errorsSchema,
+  notFoundErrorSchema,
   rateLimitErrorSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,

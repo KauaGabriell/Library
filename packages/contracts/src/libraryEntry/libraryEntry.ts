@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { bookPublicResponse } from "../book/bookSchema.js";
 import { readingStateSchema } from "../book/readingState.js";
-import { publicNoteResponseSchema } from "../notes/notes.js";
 
 const googleCreateSchema = z.strictObject({
   source: z.literal("GOOGLE_BOOKS"),
@@ -31,9 +30,20 @@ export const libraryEntryListSchema = z.object({
 
 export const libraryEntryUpdateSchema = z.object({
   status: readingStateSchema.optional(),
-  currentPage: z.int().min(0).optional(),
-  rating: z.int().min(1).max(5).optional(),
-  review: z.string().min(1).nullable().optional(),
+  currentPage: z
+    .int({ message: "A página atual deve ser um número inteiro" })
+    .min(0, { message: "A página atual não pode ser negativa" })
+    .optional(),
+  rating: z
+    .int({ message: "A avaliação deve ser um número inteiro" })
+    .min(1, { message: "A avaliação deve ser no mínimo 1" })
+    .max(5, { message: "A avaliação não pode ser maior que 5" })
+    .optional(),
+  review: z
+    .string()
+    .min(1, { message: "A resenha não pode estar vazia" })
+    .nullable()
+    .optional(),
 });
 
 export const libraryEntryPublicResponseSchema = z.object({
@@ -49,13 +59,17 @@ export const libraryEntryPublicResponseSchema = z.object({
 
 export const libraryEntryDetailPublicResponseSchema =
   libraryEntryPublicResponseSchema.extend({
-    notes: publicNoteResponseSchema.array(),
+    notes: z.array(z.unknown()),
   });
 
 export const libraryEntryListResponseSchema = z.object({
   items: libraryEntryPublicResponseSchema.array(),
   page: z.int().min(1),
   pageSize: z.int().min(1).max(200),
+});
+
+export const libraryEntryQuerySchema = z.object({
+  libraryId: z.uuid(),
 });
 
 export type LibraryEntryCreateInput = z.infer<typeof libraryEntryCreateSchema>;

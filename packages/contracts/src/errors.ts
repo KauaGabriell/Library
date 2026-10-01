@@ -4,6 +4,7 @@ export const errorsCodeList = [
   "VALIDATION_ERROR",
   "UNAUTHENTICATED",
   "FORBIDDEN",
+  "NOT_FOUND",
   "CONFLICT",
   "INTEGRATION_ERROR",
   "INTERNAL_ERROR",
@@ -24,7 +25,7 @@ const baseErrorSchema = z.object({
 
 export const validationErrorSchema = baseErrorSchema.extend({
   code: z.literal("VALIDATION_ERROR"),
-  fieldErrors: z.record(z.string(), z.array(z.string())),
+  fieldErrors: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 export const conflictErrorSchema = baseErrorSchema.extend({
@@ -33,6 +34,10 @@ export const conflictErrorSchema = baseErrorSchema.extend({
 
 export const unauthenticatedErrorSchema = baseErrorSchema.extend({
   code: z.literal("UNAUTHENTICATED"),
+});
+
+export const notFoundErrorSchema = baseErrorSchema.extend({
+  code: z.literal("NOT_FOUND"),
 });
 
 export const rateLimitErrorSchema = baseErrorSchema.extend({

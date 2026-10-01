@@ -4,6 +4,9 @@ import {
   libraryEntryListResponseSchema,
   libraryEntryListSchema,
   libraryEntryPublicResponseSchema,
+  libraryEntryQuerySchema,
+  libraryEntryUpdateSchema,
+  notFoundErrorSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,
 } from "@library/contracts";
@@ -115,6 +118,59 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
       });
 
       return reply.status(200).send(publicResult);
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().patch("/library/:libraryId", {
+    schema: {
+      tags: ["Library"],
+      summary: "Atualiza uma leitura",
+      body: libraryEntryUpdateSchema,
+      params: libraryEntryQuerySchema,
+      response: {
+        200: libraryEntryPublicResponseSchema,
+        400: validationErrorSchema,
+        401: unauthenticatedErrorSchema,
+        404: notFoundErrorSchema,
+        409: conflictErrorSchema,
+      },
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+
+      if (!user) {
+        throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+      }
+      const { libraryId } = libraryEntryQuerySchema.parse(request.params);
+      const body = libraryEntryUpdateSchema.parse(request.body);
+
+      const updatedLibrary = await libraryService.updateLibrary({
+        userId: user.id,
+        libraryId: libraryId,
+        patch: body,
+      });
+
+      const publicUpdatedLibrary = libraryEntryPublicResponseSchema.parse({
+        id: updatedLibrary.id,
+        status: updatedLibrary.status,
+        currentPage: updatedLibrary.currentPage,
+        rating: updatedLibrary.rating,
+        review: updatedLibrary.review,
+        createdAt: updatedLibrary.createdAt.toISOString(),
+        updatedAt: updatedLibrary.updatedAt.toISOString(),
+        book: {
+          googleBooksId: updatedLibrary.book.googleBooksId,
+          title: updatedLibrary.book.title,
+          authors: updatedLibrary.book.authors,
+          description: updatedLibrary.book.description,
+          coverUrl: updatedLibrary.book.coverUrl,
+          language: updatedLibrary.book.language,
+          pageCount: updatedLibrary.book.pageCount,
+        },
+      });
+
+      return reply.status(200).send(publicUpdatedLibrary);
     },
   });
 };
