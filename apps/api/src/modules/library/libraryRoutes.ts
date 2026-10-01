@@ -16,6 +16,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
 import { booksService } from "../books/booksService";
+import { mapLibraryEntryToPublicResponse } from "./libraryMapper";
 import { libraryService } from "./libraryService";
 
 export const libraryRoutes: FastifyPluginAsync = async (app) => {
@@ -41,24 +42,7 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
         request.user.id,
         request.body,
       );
-      const publicEntry = libraryEntryPublicResponseSchema.parse({
-        id: entry.id,
-        status: entry.status,
-        currentPage: entry.currentPage,
-        rating: entry.rating,
-        review: entry.review,
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-        book: {
-          googleBooksId: entry.book.googleBooksId,
-          title: entry.book.title,
-          authors: entry.book.authors,
-          description: entry.book.description,
-          coverUrl: entry.book.coverUrl,
-          language: entry.book.language,
-          pageCount: entry.book.pageCount,
-        },
-      });
+      const publicEntry = mapLibraryEntryToPublicResponse(entry);
 
       return reply.status(201).send(publicEntry);
     },
@@ -96,24 +80,7 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
         status,
       });
       const publicResult = libraryEntryListResponseSchema.parse({
-        items: result.map((entry) => ({
-          id: entry.id,
-          status: entry.status,
-          currentPage: entry.currentPage,
-          rating: entry.rating,
-          review: entry.review,
-          createdAt: entry.createdAt.toISOString(),
-          updatedAt: entry.updatedAt.toISOString(),
-          book: {
-            googleBooksId: entry.book.googleBooksId,
-            title: entry.book.title,
-            authors: entry.book.authors,
-            description: entry.book.description,
-            coverUrl: entry.book.coverUrl,
-            language: entry.book.language,
-            pageCount: entry.book.pageCount,
-          },
-        })),
+        items: result.map(mapLibraryEntryToPublicResponse),
         page,
         pageSize,
       });
@@ -152,24 +119,8 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
         patch: body,
       });
 
-      const publicUpdatedLibrary = libraryEntryPublicResponseSchema.parse({
-        id: updatedLibrary.id,
-        status: updatedLibrary.status,
-        currentPage: updatedLibrary.currentPage,
-        rating: updatedLibrary.rating,
-        review: updatedLibrary.review,
-        createdAt: updatedLibrary.createdAt.toISOString(),
-        updatedAt: updatedLibrary.updatedAt.toISOString(),
-        book: {
-          googleBooksId: updatedLibrary.book.googleBooksId,
-          title: updatedLibrary.book.title,
-          authors: updatedLibrary.book.authors,
-          description: updatedLibrary.book.description,
-          coverUrl: updatedLibrary.book.coverUrl,
-          language: updatedLibrary.book.language,
-          pageCount: updatedLibrary.book.pageCount,
-        },
-      });
+      const publicUpdatedLibrary =
+        mapLibraryEntryToPublicResponse(updatedLibrary);
 
       return reply.status(200).send(publicUpdatedLibrary);
     },
