@@ -72,6 +72,10 @@ export const libraryEntryQuerySchema = z.object({
   libraryId: z.uuid(),
 });
 
+export const libraryEntryDeleteResponseSchema = z
+  .undefined()
+  .describe("Entrada removida; resposta sem corpo");
+
 export type LibraryEntryCreateInput = z.infer<typeof libraryEntryCreateSchema>;
 
 export type LibraryEntryListQuery = z.infer<typeof libraryEntryListSchema>;

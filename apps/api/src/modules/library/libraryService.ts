@@ -1,5 +1,6 @@
 import { AppError } from "../../errors/appError";
 import type {
+  DeleteLibraryParams,
   ListLibraryParams,
   UpdateLibraryParams,
 } from "./libraryRepository";
@@ -20,6 +21,8 @@ export const libraryService = {
 
     if (!libraryEntry)
       throw new AppError("Leitura não encontrada", 404, "NOT_FOUND");
+
+    if (Object.keys(patch).length === 0) return libraryEntry;
 
     const resultingStatus = patch.status ?? libraryEntry.status;
 
@@ -60,5 +63,18 @@ export const libraryService = {
       patch,
     });
     return updatedLibrary;
+  },
+
+  async deleteLibrary({ userId, libraryId }: DeleteLibraryParams) {
+    const library = await libraryRepository.findById(userId, libraryId);
+
+    if (!library)
+      throw new AppError("Leitura não encontrada", 404, "NOT_FOUND");
+
+    const deletedLibrary = await libraryRepository.deleteLibrary({
+      userId,
+      libraryId,
+    });
+    return deletedLibrary;
   },
 };

@@ -554,6 +554,65 @@ describe("PATCH /library/:id", () => {
     });
   });
 
+  it("returns the existing entry unchanged when the patch is empty", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { book, entry } = await createLibraryFixture(user.id, "READ", {
+      pageCount: 240,
+      currentPage: 240,
+      rating: 4,
+      review: "Resenha preservada",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      id: entry.id,
+      status: "READ",
+      currentPage: 240,
+      rating: 4,
+      review: "Resenha preservada",
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+      book: {
+        googleBooksId: book.googleBooksId,
+        title: book.title,
+        authors: book.authors,
+        description: book.description,
+        coverUrl: book.coverUrl,
+        language: book.language,
+        pageCount: 240,
+      },
+    });
+
+    const savedEntry = await prisma.libraryEntry.findUniqueOrThrow({
+      where: { id: entry.id },
+    });
+    expect(savedEntry.updatedAt).toEqual(entry.updatedAt);
+  });
+
+  it("returns not found for a missing entry with an empty patch", async () => {
+    const { cookie } = await authenticatedUser();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${randomUUID()}`,
+      headers: { cookie },
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      code: "NOT_FOUND",
+      message: "Leitura não encontrada",
+    });
+  });
+
   it("updates partially and returns the public entry shape", async () => {
     const { user, cookie } = await authenticatedUser();
     const { book, entry } = await createLibraryFixture(user.id, "READ", {
@@ -635,6 +694,38 @@ describe("PATCH /library/:id", () => {
     expect(
       await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
     ).toMatchObject({ status: "READ", rating: 5, review: "Leitura concluída" });
+  });
+
+  it("preserves the evaluation when the user starts reading the book again", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { entry } = await createLibraryFixture(user.id, "READ", {
+      pageCount: 240,
+      currentPage: 240,
+      rating: 5,
+      review: "Quero reler este livro",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: { status: "READING" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: entry.id,
+      status: "READING",
+      rating: 5,
+      review: "Quero reler este livro",
+    });
+    expect(
+      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).toMatchObject({
+      status: "READING",
+      rating: 5,
+      review: "Quero reler este livro",
+    });
   });
 
   it("rejects an invalid body without changing the entry", async () => {
@@ -742,6 +833,80 @@ describe("PATCH /library/:id", () => {
       url: "/library/not-a-uuid",
       headers: { cookie },
       payload: { status: "READING" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
+describe("DELETE /library/:libraryId", () => {
+  it("rejects requests without a session", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/library/${randomUUID()}`,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Não autenticado",
+    });
+  });
+
+  it("deletes the authenticated user's entry and returns no content", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { book, entry } = await createLibraryFixture(user.id);
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe("");
+    expect(
+      await prisma.libraryEntry.findUnique({ where: { id: entry.id } }),
+    ).toBeNull();
+    expect(await prisma.book.findUnique({ where: { id: book.id } })).not.toBeNull();
+  });
+
+  it("returns the same not-found response for foreign and missing entries", async () => {
+    const owner = await authenticatedUser();
+    const otherUser = await authenticatedUser();
+    const { entry } = await createLibraryFixture(otherUser.user.id);
+
+    const foreignResponse = await app.inject({
+      method: "DELETE",
+      url: `/library/${entry.id}`,
+      headers: { cookie: owner.cookie },
+    });
+    const missingResponse = await app.inject({
+      method: "DELETE",
+      url: `/library/${randomUUID()}`,
+      headers: { cookie: owner.cookie },
+    });
+
+    expect(foreignResponse.statusCode).toBe(404);
+    expect(missingResponse.statusCode).toBe(404);
+    expect(foreignResponse.json()).toEqual(missingResponse.json());
+    expect(foreignResponse.json()).toEqual({
+      code: "NOT_FOUND",
+      message: "Leitura não encontrada",
+    });
+    expect(
+      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).toMatchObject({ userId: otherUser.user.id, status: "WANT_TO_READ" });
+  });
+
+  it("rejects an invalid entry ID", async () => {
+    const { cookie } = await authenticatedUser();
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/library/not-a-uuid",
+      headers: { cookie },
     });
 
     expect(response.statusCode).toBe(400);

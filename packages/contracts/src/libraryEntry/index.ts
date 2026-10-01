@@ -6,10 +6,11 @@ export {
   type LibraryEntryPublicResponse,
   type LibraryEntryUpdateInput,
   libraryEntryCreateSchema,
+  libraryEntryDeleteResponseSchema,
   libraryEntryDetailPublicResponseSchema,
   libraryEntryListResponseSchema,
   libraryEntryListSchema,
-  libraryEntryQuerySchema,
   libraryEntryPublicResponseSchema,
+  libraryEntryQuerySchema,
   libraryEntryUpdateSchema,
 } from "./libraryEntry.js";

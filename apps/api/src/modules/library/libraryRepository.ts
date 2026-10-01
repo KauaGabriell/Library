@@ -14,6 +14,32 @@ export type UpdateLibraryParams = {
   patch: LibraryEntryUpdateInput;
 };
 
+export type DeleteLibraryParams = {
+  userId: string;
+  libraryId: string;
+};
+
+const libraryEntrySelect = {
+  id: true,
+  status: true,
+  currentPage: true,
+  rating: true,
+  review: true,
+  createdAt: true,
+  updatedAt: true,
+  book: {
+    select: {
+      googleBooksId: true,
+      title: true,
+      authors: true,
+      description: true,
+      coverUrl: true,
+      language: true,
+      pageCount: true,
+    },
+  },
+} as const;
+
 export const libraryRepository = {
   listLibrary({ page, userId, status, pageSize }: ListLibraryParams) {
     return prisma.libraryEntry.findMany({
@@ -43,14 +69,7 @@ export const libraryRepository = {
         id: libraryId,
         userId: userId,
       },
-      select: {
-        id: true,
-        status: true,
-        currentPage: true,
-        rating: true,
-        review: true,
-        book: { select: { pageCount: true } },
-      },
+      select: libraryEntrySelect,
     });
   },
 
@@ -68,25 +87,15 @@ export const libraryRepository = {
         ...(patch.rating !== undefined ? { rating: patch.rating } : {}),
         ...(patch.review !== undefined ? { review: patch.review } : {}),
       },
-      select: {
-        id: true,
-        status: true,
-        currentPage: true,
-        rating: true,
-        review: true,
-        createdAt: true,
-        updatedAt: true,
-        book: {
-          select: {
-            googleBooksId: true,
-            title: true,
-            authors: true,
-            description: true,
-            coverUrl: true,
-            language: true,
-            pageCount: true,
-          },
-        },
+      select: libraryEntrySelect,
+    });
+  },
+
+  deleteLibrary({ userId, libraryId }: DeleteLibraryParams) {
+    return prisma.libraryEntry.delete({
+      where: {
+        userId: userId,
+        id: libraryId,
       },
     });
   },

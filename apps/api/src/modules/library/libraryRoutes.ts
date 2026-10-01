@@ -1,6 +1,7 @@
 import {
   conflictErrorSchema,
   libraryEntryCreateSchema,
+  libraryEntryDeleteResponseSchema,
   libraryEntryListResponseSchema,
   libraryEntryListSchema,
   libraryEntryPublicResponseSchema,
@@ -171,6 +172,33 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
       });
 
       return reply.status(200).send(publicUpdatedLibrary);
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().delete("/library/:libraryId", {
+    schema: {
+      tags: ["Library"],
+      summary: "Deleta uma Library",
+      params: libraryEntryQuerySchema,
+      response: {
+        204: libraryEntryDeleteResponseSchema,
+        400: validationErrorSchema,
+        401: unauthenticatedErrorSchema,
+        409: conflictErrorSchema,
+        404: notFoundErrorSchema,
+      },
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+      if (!user) {
+        throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+      }
+
+      const { libraryId } = libraryEntryQuerySchema.parse(request.params);
+
+      await libraryService.deleteLibrary({ userId: user.id, libraryId });
+      reply.status(204);
     },
   });
 };
