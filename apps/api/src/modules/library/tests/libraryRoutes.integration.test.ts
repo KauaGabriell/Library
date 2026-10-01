@@ -539,6 +539,126 @@ describe("GET /library", () => {
   });
 });
 
+describe("GET /library/:libraryId", () => {
+  it("rejects requests without a session", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: `/library/${randomUUID()}`,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      code: "UNAUTHENTICATED",
+      message: "Não autenticado",
+    });
+  });
+
+  it("returns public entry details with notes ordered newest first", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { book, entry } = await createLibraryFixture(user.id, "READING");
+    const olderCreatedAt = new Date("2026-09-01T10:00:00.000Z");
+    const newerCreatedAt = new Date("2026-09-02T10:00:00.000Z");
+    const olderNote = await prisma.note.create({
+      data: {
+        libraryEntryId: entry.id,
+        content: "Anotação antiga",
+        createdAt: olderCreatedAt,
+        updatedAt: olderCreatedAt,
+      },
+    });
+    const newerNote = await prisma.note.create({
+      data: {
+        libraryEntryId: entry.id,
+        content: "Anotação recente",
+        createdAt: newerCreatedAt,
+        updatedAt: newerCreatedAt,
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      id: entry.id,
+      status: "READING",
+      currentPage: entry.currentPage,
+      rating: null,
+      review: null,
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+      book: {
+        googleBooksId: book.googleBooksId,
+        title: book.title,
+        authors: book.authors,
+        description: book.description,
+        coverUrl: book.coverUrl,
+        language: book.language,
+        pageCount: book.pageCount,
+      },
+      notes: [
+        {
+          id: newerNote.id,
+          content: newerNote.content,
+          createdAt: newerCreatedAt.toISOString(),
+          updatedAt: newerCreatedAt.toISOString(),
+        },
+        {
+          id: olderNote.id,
+          content: olderNote.content,
+          createdAt: olderCreatedAt.toISOString(),
+          updatedAt: olderCreatedAt.toISOString(),
+        },
+      ],
+    });
+    expect(response.json()).not.toHaveProperty("userId");
+    expect(response.json()).not.toHaveProperty("bookId");
+    expect(response.json().book).not.toHaveProperty("id");
+    expect(response.json().notes[0]).not.toHaveProperty("libraryEntryId");
+  });
+
+  it("returns the same not-found response for another user's and missing entries", async () => {
+    const owner = await authenticatedUser();
+    const otherUser = await authenticatedUser();
+    const { entry } = await createLibraryFixture(otherUser.user.id, "READING");
+
+    const foreignResponse = await app.inject({
+      method: "GET",
+      url: `/library/${entry.id}`,
+      headers: { cookie: owner.cookie },
+    });
+    const missingResponse = await app.inject({
+      method: "GET",
+      url: `/library/${randomUUID()}`,
+      headers: { cookie: owner.cookie },
+    });
+
+    expect(foreignResponse.statusCode).toBe(404);
+    expect(missingResponse.statusCode).toBe(404);
+    expect(foreignResponse.json()).toEqual(missingResponse.json());
+    expect(foreignResponse.json()).toEqual({
+      code: "NOT_FOUND",
+      message: "Leitura não encontrada",
+    });
+  });
+
+  it("rejects an invalid entry ID", async () => {
+    const { cookie } = await authenticatedUser();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library/not-a-uuid",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
 describe("PATCH /library/:id", () => {
   it("rejects requests without a session", async () => {
     const response = await app.inject({

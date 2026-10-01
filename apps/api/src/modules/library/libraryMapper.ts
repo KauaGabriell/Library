@@ -1,6 +1,9 @@
 import {
+  type LibraryEntryDetailsPublicResponse,
   type LibraryEntryPublicResponse,
+  libraryEntryDetailPublicResponseSchema,
   libraryEntryPublicResponseSchema,
+  type PublicNoteResponse,
 } from "@library/contracts";
 
 type LibraryEntryForMapping = Omit<
@@ -9,6 +12,15 @@ type LibraryEntryForMapping = Omit<
 > & {
   createdAt: Date;
   updatedAt: Date;
+};
+
+type NoteForMapping = Omit<PublicNoteResponse, "createdAt" | "updatedAt"> & {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type LibraryEntryDetailsForMapping = LibraryEntryForMapping & {
+  notes: NoteForMapping[];
 };
 
 export function mapLibraryEntryToPublicResponse(
@@ -31,5 +43,19 @@ export function mapLibraryEntryToPublicResponse(
       language: entry.book.language,
       pageCount: entry.book.pageCount,
     },
+  });
+}
+
+export function mapLibraryEntryDetailsToPublicResponse(
+  entry: LibraryEntryDetailsForMapping,
+): LibraryEntryDetailsPublicResponse {
+  return libraryEntryDetailPublicResponseSchema.parse({
+    ...mapLibraryEntryToPublicResponse(entry),
+    notes: entry.notes.map((note) => ({
+      id: note.id,
+      content: note.content,
+      createdAt: note.createdAt.toISOString(),
+      updatedAt: note.updatedAt.toISOString(),
+    })),
   });
 }

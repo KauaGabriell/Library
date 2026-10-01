@@ -6,6 +6,7 @@ import {
   type LibraryEntryListQuery,
   type LibraryEntryListResponse,
   type LibraryEntryPublicResponse,
+  type PublicNoteResponse,
   libraryEntryCreateSchema,
   libraryEntryDetailPublicResponseSchema,
   libraryEntryListResponseSchema,
@@ -115,9 +116,15 @@ describe("library entry public exports", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     } satisfies LibraryEntryPublicResponse;
+    const note = {
+      id: "e31ce6b9-70f0-46e6-b56e-92e755b6e1e3",
+      content: "Anotação válida",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    } satisfies PublicNoteResponse;
     const detail = {
       ...entry,
-      notes: [],
+      notes: [note],
     } satisfies LibraryEntryDetailsPublicResponse;
     const list = {
       items: [entry],
@@ -130,6 +137,24 @@ describe("library entry public exports", () => {
     expect(libraryEntryDetailPublicResponseSchema.parse(detail)).toEqual(
       detail,
     );
+    expect(
+      libraryEntryDetailPublicResponseSchema.safeParse({
+        ...detail,
+        notes: [{ ...note, content: "" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      libraryEntryDetailPublicResponseSchema.safeParse({
+        ...detail,
+        notes: [{ ...note, content: "   " }],
+      }).success,
+    ).toBe(false);
+    expect(
+      libraryEntryDetailPublicResponseSchema.safeParse({
+        ...detail,
+        notes: [{ ...note, content: "a".repeat(10001) }],
+      }).success,
+    ).toBe(false);
     expect(libraryEntryListResponseSchema.parse(list)).toEqual(list);
   });
 });

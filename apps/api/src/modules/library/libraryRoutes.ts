@@ -2,6 +2,7 @@ import {
   conflictErrorSchema,
   libraryEntryCreateSchema,
   libraryEntryDeleteResponseSchema,
+  libraryEntryDetailPublicResponseSchema,
   libraryEntryListResponseSchema,
   libraryEntryListSchema,
   libraryEntryPublicResponseSchema,
@@ -16,7 +17,11 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
 import { booksService } from "../books/booksService";
-import { mapLibraryEntryToPublicResponse } from "./libraryMapper";
+import { notesService } from "../notes/notesService";
+import {
+  mapLibraryEntryDetailsToPublicResponse,
+  mapLibraryEntryToPublicResponse,
+} from "./libraryMapper";
 import { libraryService } from "./libraryService";
 
 export const libraryRoutes: FastifyPluginAsync = async (app) => {
@@ -150,6 +155,37 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
 
       await libraryService.deleteLibrary({ userId: user.id, libraryId });
       reply.status(204);
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().get("/library/:libraryId", {
+    schema: {
+      tags: ["Library"],
+      summary: "Retorna uma leitura pelo ID",
+      params: libraryEntryQuerySchema,
+      response: {
+        200: libraryEntryDetailPublicResponseSchema,
+        400: validationErrorSchema,
+        401: unauthenticatedErrorSchema,
+        404: notFoundErrorSchema,
+      },
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+      if (!user) {
+        throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+      }
+
+      const { libraryId } = libraryEntryQuerySchema.parse(request.params);
+
+      const detail = await notesService.getLibraryEntryDetails({
+        userId: user.id,
+        libraryId,
+      });
+
+      const publicDetail = mapLibraryEntryDetailsToPublicResponse(detail);
+      return reply.status(200).send(publicDetail);
     },
   });
 };

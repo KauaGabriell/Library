@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { bookPublicResponse } from "../book/bookSchema.js";
 import { readingStateSchema } from "../book/readingState.js";
+import { publicNoteResponseSchema } from "../notes/notes.js";
 
 const googleCreateSchema = z.strictObject({
   source: z.literal("GOOGLE_BOOKS"),
@@ -59,7 +60,7 @@ export const libraryEntryPublicResponseSchema = z.object({
 
 export const libraryEntryDetailPublicResponseSchema =
   libraryEntryPublicResponseSchema.extend({
-    notes: z.array(z.unknown()),
+    notes: z.array(publicNoteResponseSchema),
   });
 
 export const libraryEntryListResponseSchema = z.object({
