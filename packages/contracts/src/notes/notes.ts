@@ -14,6 +14,10 @@ export const noteParamsSchema = z.object({
   libraryId: z.uuid(),
 });
 
+export const updateNoteParamsSchema = z.object({
+  noteId: z.uuid(),
+});
+
 export const publicNoteResponseSchema = z.object({
   id: z.uuid(),
   content: noteContentSchema,

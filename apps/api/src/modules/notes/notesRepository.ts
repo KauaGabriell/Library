@@ -11,6 +11,12 @@ export type NotesListParams = {
   userId: string;
 };
 
+export type NoteUpdate = {
+  noteId: string;
+  userId: string;
+  content: string;
+};
+
 const libraryEntryDetailSelect = {
   id: true,
   status: true,
@@ -60,6 +66,24 @@ export const notesRepository = {
           connect: { id: data.libraryEntryId, userId: data.userId },
         },
       },
+    });
+  },
+
+  getNoteById(noteId: string) {
+    return prisma.note.findUnique({
+      where: {
+        id: noteId,
+      },
+    });
+  },
+
+  updateNote({ noteId, content, userId }: NoteUpdate) {
+    return prisma.note.update({
+      where: {
+        id: noteId,
+        libraryEntry: { userId: userId },
+      },
+      data: { content: content },
     });
   },
 };

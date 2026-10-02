@@ -5,6 +5,7 @@ import {
   notFoundErrorSchema,
   publicNoteResponseSchema,
   unauthenticatedErrorSchema,
+  updateNoteParamsSchema,
   validationErrorSchema,
 } from "@library/contracts";
 import type { FastifyPluginAsync } from "fastify";
@@ -45,6 +46,37 @@ export const notesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       return reply.status(201).send(mapNoteToPublicResponse(note));
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().patch("/notes/:noteId", {
+    schema: {
+      tags: ["Notes"],
+      summary: "Atualiza uma Nota",
+      body: noteSchema,
+      response: {
+        200: publicNoteResponseSchema,
+        400: validationErrorSchema,
+        404: notFoundErrorSchema,
+        401: unauthenticatedErrorSchema,
+        409: conflictErrorSchema,
+      },
+      params: updateNoteParamsSchema,
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+      if (!user) throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+
+      const { noteId } = updateNoteParamsSchema.parse(request.params);
+      const { content } = noteSchema.parse(request.body);
+
+      const updatedNote = await notesService.updateNote({
+        noteId,
+        userId: user.id,
+        content: content,
+      });
+      reply.status(200).send(mapNoteToPublicResponse(updatedNote));
     },
   });
 };

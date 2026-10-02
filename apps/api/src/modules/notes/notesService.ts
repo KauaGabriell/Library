@@ -2,6 +2,7 @@ import { AppError } from "../../errors/appError";
 import {
   type NoteInputWithOtherParams,
   type NotesListParams,
+  type NoteUpdate,
   notesRepository,
 } from "./notesRepository";
 
@@ -45,5 +46,33 @@ export const notesService = {
     });
 
     return note;
+  },
+
+  async updateNote({ noteId, content, userId }: NoteUpdate) {
+    const note = await notesRepository.getNoteById(noteId);
+
+    if (!note) throw new AppError("Nota não encontrada", 404, "NOT_FOUND");
+
+    const libraryEntry = await notesRepository.getDetailById({
+      libraryId: note.libraryEntryId,
+      userId: userId,
+    });
+
+    if (!libraryEntry)
+      throw new AppError("Nota não encontrada", 404, "NOT_FOUND");
+
+    if (libraryEntry.status === "WANT_TO_READ")
+      throw new AppError(
+        `Não é possível atualizar notas enquanto o livro está marcado como "Quero ler". Altere o status para "Lendo" ou "Lido".`,
+        409,
+        "CONFLICT",
+      );
+
+    const updatedNote = await notesRepository.updateNote({
+      noteId: note.id,
+      content: content,
+      userId: userId,
+    });
+    return updatedNote;
   },
 };
