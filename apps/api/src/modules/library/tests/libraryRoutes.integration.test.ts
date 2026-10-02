@@ -848,6 +848,34 @@ describe("PATCH /library/:id", () => {
     });
   });
 
+  it("preserves existing notes when the user changes the reading status", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { entry } = await createLibraryFixture(user.id, "READ");
+    const note = await prisma.note.create({
+      data: {
+        libraryEntryId: entry.id,
+        content: "Anotação para manter ao reler",
+      },
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: { status: "READING" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ status: "READING" });
+    expect(
+      await prisma.note.findUniqueOrThrow({ where: { id: note.id } }),
+    ).toMatchObject({
+      id: note.id,
+      libraryEntryId: entry.id,
+      content: "Anotação para manter ao reler",
+    });
+  });
+
   it("rejects an invalid body without changing the entry", async () => {
     const { user, cookie } = await authenticatedUser();
     const { entry } = await createLibraryFixture(user.id, "READ", {
