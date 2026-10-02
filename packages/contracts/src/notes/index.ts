@@ -1,4 +1,5 @@
 export {
+  noteParamsSchema,
   type NoteInput,
   noteSchema,
   type PublicNoteResponse,

@@ -17,6 +17,7 @@ import { authRoutes } from "./modules/auth/authRoutes";
 import { bookRoutes } from "./modules/books/bookRoutes";
 import { libraryRoutes } from "./modules/library/libraryRoutes";
 import prismaPlugin from "./plugins/prisma";
+import { notesRoutes } from "./modules/notes/notesRoutes";
 
 const app = Fastify({ logger: loggerConfig });
 app.decorateRequest("user", null);
@@ -64,6 +65,7 @@ app.register(fastifyRateLimit, {
 app.register(authRoutes, { prefix: "/auth" });
 app.register(bookRoutes, { prefix: "/books" });
 app.register(libraryRoutes);
+app.register(notesRoutes);
 
 app.get("/health", (_req, res) => {
   return res.send({ message: "API STATUS: OK" });

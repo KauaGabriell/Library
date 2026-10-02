@@ -1,4 +1,10 @@
+import type { NoteInput } from "@library/contracts";
 import { prisma } from "../../lib/prisma";
+
+export type NoteInputWithOtherParams = NoteInput & {
+  libraryEntryId: string;
+  userId: string;
+};
 
 export type NotesListParams = {
   libraryId: string;
@@ -43,6 +49,17 @@ export const notesRepository = {
         userId: userId,
       },
       select: libraryEntryDetailSelect,
+    });
+  },
+
+  createNote(data: NoteInputWithOtherParams) {
+    return prisma.note.create({
+      data: {
+        content: data.content,
+        libraryEntry: {
+          connect: { id: data.libraryEntryId, userId: data.userId },
+        },
+      },
     });
   },
 };

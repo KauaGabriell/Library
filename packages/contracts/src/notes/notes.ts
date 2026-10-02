@@ -10,6 +10,10 @@ export const noteSchema = z.object({
   content: noteContentSchema,
 });
 
+export const noteParamsSchema = z.object({
+  libraryId: z.uuid(),
+});
+
 export const publicNoteResponseSchema = z.object({
   id: z.uuid(),
   content: noteContentSchema,
