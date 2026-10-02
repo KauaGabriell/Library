@@ -14,7 +14,7 @@ export const noteParamsSchema = z.object({
   libraryId: z.uuid(),
 });
 
-export const updateNoteParamsSchema = z.object({
+export const updateAndDeleteNoteParamsSchema = z.object({
   noteId: z.uuid(),
 });
 
@@ -24,6 +24,10 @@ export const publicNoteResponseSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+
+export const noteDeleteResponseSchema = z
+  .undefined()
+  .describe("Nota removida; resposta sem corpo");
 
 export type NoteInput = z.infer<typeof noteSchema>;
 export type PublicNoteResponse = z.infer<typeof publicNoteResponseSchema>;

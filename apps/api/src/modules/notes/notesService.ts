@@ -75,4 +75,27 @@ export const notesService = {
     });
     return updatedNote;
   },
+
+  async deleteNote(noteId: string, userId: string) {
+    const note = await notesRepository.getNoteById(noteId);
+
+    if (!note) throw new AppError("Nota não encontrada", 404, "NOT_FOUND");
+
+    const libraryEntry = await notesRepository.getDetailById({
+      libraryId: note.libraryEntryId,
+      userId: userId,
+    });
+
+    if (!libraryEntry)
+      throw new AppError("Nota não encontrada", 404, "NOT_FOUND");
+
+    if (libraryEntry.status === "WANT_TO_READ")
+      throw new AppError(
+        `Não é possível deletar notas enquanto o livro está marcado como "Quero ler". Altere o status para "Lendo" ou "Lido".`,
+        409,
+        "CONFLICT",
+      );
+
+    return await notesRepository.deleteNote(noteId, userId);
+  },
 };

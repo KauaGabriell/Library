@@ -281,3 +281,97 @@ describe("PATCH /notes/:noteId", () => {
     ).toMatchObject({ content: "Nota privada" });
   });
 });
+
+describe("DELETE /notes/:noteId", () => {
+  it("rejects requests without a session", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/notes/${randomUUID()}`,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ code: "UNAUTHENTICATED" });
+  });
+
+  it.each(["READING", "READ"] as const)(
+    "deletes a note when entry status is %s with an empty 204 response",
+    async (status) => {
+      const { user, cookie } = await authenticatedUser();
+      const entry = await createEntry(user.id, status);
+      const note = await prisma.note.create({
+        data: { libraryEntryId: entry.id, content: "Nota para remover" },
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/notes/${note.id}`,
+        headers: { cookie },
+      });
+
+      expect(response.statusCode).toBe(204);
+      expect(response.body).toBe("");
+      expect(await prisma.note.findUnique({ where: { id: note.id } })).toBeNull();
+    },
+  );
+
+  it("rejects deletion when entry status is WANT_TO_READ without removing the note", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const entry = await createEntry(user.id, "WANT_TO_READ");
+    const note = await prisma.note.create({
+      data: { libraryEntryId: entry.id, content: "Nota privada" },
+    });
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/notes/${note.id}`,
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ code: "CONFLICT" });
+    expect(
+      await prisma.note.findUniqueOrThrow({ where: { id: note.id } }),
+    ).toMatchObject({ content: "Nota privada" });
+  });
+
+  it("returns the same not-found response for foreign and missing notes", async () => {
+    const owner = await authenticatedUser();
+    const anotherUser = await authenticatedUser();
+    const foreignEntry = await createEntry(anotherUser.user.id, "READING");
+    const foreignNote = await prisma.note.create({
+      data: { libraryEntryId: foreignEntry.id, content: "Nota privada" },
+    });
+
+    const foreignResponse = await app.inject({
+      method: "DELETE",
+      url: `/notes/${foreignNote.id}`,
+      headers: { cookie: owner.cookie },
+    });
+    const missingResponse = await app.inject({
+      method: "DELETE",
+      url: `/notes/${randomUUID()}`,
+      headers: { cookie: owner.cookie },
+    });
+
+    expect(foreignResponse.statusCode).toBe(404);
+    expect(missingResponse.statusCode).toBe(404);
+    expect(foreignResponse.json()).toEqual(missingResponse.json());
+    expect(foreignResponse.json()).toMatchObject({ code: "NOT_FOUND" });
+    expect(
+      await prisma.note.findUniqueOrThrow({ where: { id: foreignNote.id } }),
+    ).toMatchObject({ content: "Nota privada" });
+  });
+
+  it("rejects an invalid note ID", async () => {
+    const { cookie } = await authenticatedUser();
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/notes/not-a-uuid",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});

@@ -1,8 +1,9 @@
 export {
   type NoteInput,
+  noteDeleteResponseSchema,
   noteParamsSchema,
   noteSchema,
   type PublicNoteResponse,
   publicNoteResponseSchema,
-  updateNoteParamsSchema,
+  updateAndDeleteNoteParamsSchema,
 } from "./notes.js";

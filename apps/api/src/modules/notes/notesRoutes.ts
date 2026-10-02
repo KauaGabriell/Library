@@ -1,11 +1,12 @@
 import {
   conflictErrorSchema,
+  noteDeleteResponseSchema,
   noteParamsSchema,
   noteSchema,
   notFoundErrorSchema,
   publicNoteResponseSchema,
   unauthenticatedErrorSchema,
-  updateNoteParamsSchema,
+  updateAndDeleteNoteParamsSchema,
   validationErrorSchema,
 } from "@library/contracts";
 import type { FastifyPluginAsync } from "fastify";
@@ -61,14 +62,14 @@ export const notesRoutes: FastifyPluginAsync = async (app) => {
         401: unauthenticatedErrorSchema,
         409: conflictErrorSchema,
       },
-      params: updateNoteParamsSchema,
+      params: updateAndDeleteNoteParamsSchema,
     },
     preHandler: requireUser,
     handler: async (request, reply) => {
       const user = request.user;
       if (!user) throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
 
-      const { noteId } = updateNoteParamsSchema.parse(request.params);
+      const { noteId } = updateAndDeleteNoteParamsSchema.parse(request.params);
       const { content } = noteSchema.parse(request.body);
 
       const updatedNote = await notesService.updateNote({
@@ -77,6 +78,30 @@ export const notesRoutes: FastifyPluginAsync = async (app) => {
         content: content,
       });
       reply.status(200).send(mapNoteToPublicResponse(updatedNote));
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().delete("/notes/:noteId", {
+    schema: {
+      tags: ["Notes"],
+      summary: "Deleta uma Nota",
+      response: {
+        204: noteDeleteResponseSchema,
+        400: validationErrorSchema,
+        404: notFoundErrorSchema,
+        401: unauthenticatedErrorSchema,
+        409: conflictErrorSchema,
+      },
+      params: updateAndDeleteNoteParamsSchema,
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+      if (!user) throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+
+      const { noteId } = updateAndDeleteNoteParamsSchema.parse(request.params);
+      await notesService.deleteNote(noteId, user.id);
+      reply.status(204);
     },
   });
 };
