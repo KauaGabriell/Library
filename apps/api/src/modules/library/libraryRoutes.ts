@@ -27,7 +27,7 @@ import { libraryService } from "./libraryService";
 export const libraryRoutes: FastifyPluginAsync = async (app) => {
   app.withTypeProvider<ZodTypeProvider>().post("/library", {
     schema: {
-      tags: ["LIBRARY"],
+      tags: ["Library"],
       summary: "Adiciona um livro à biblioteca",
       body: libraryEntryCreateSchema,
       response: {
@@ -57,7 +57,7 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
     schema: {
       tags: ["Library"],
       summary:
-        "Retorna todas as saídas de de library de um usuário - Paginando e Filtrado",
+        "Retorna todas as saídas de library de um usuário - Paginado e Filtrado",
       querystring: libraryEntryListSchema,
       response: {
         200: libraryEntryListResponseSchema,
