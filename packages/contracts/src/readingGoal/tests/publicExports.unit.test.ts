@@ -1,6 +1,7 @@
 import {
   type ReadingGoalInput,
   type ReadingGoalResponse,
+  readingGoalDeleteResponseSchema,
   readingGoalResponseSchema,
   readingGoalSchema,
 } from "@library/contracts";
@@ -9,7 +10,6 @@ import { describe, expect, it } from "vitest";
 describe("reading goal public exports", () => {
   it("exports input and response schemas through contracts entry point", () => {
     const input = {
-      year: 2026,
       targetBooks: 12,
     } satisfies ReadingGoalInput;
     const response = {
@@ -21,11 +21,21 @@ describe("reading goal public exports", () => {
 
     expect(readingGoalSchema.parse(input)).toEqual(input);
     expect(readingGoalResponseSchema.parse(response)).toEqual(response);
+    expect(readingGoalDeleteResponseSchema.parse(undefined)).toBeUndefined();
   });
 
   it.each([0, 1000])("rejects targetBooks %s", (targetBooks) => {
-    expect(readingGoalSchema.safeParse({ year: 2026, targetBooks }).success).toBe(
-      false,
-    );
+    expect(readingGoalSchema.safeParse({ targetBooks }).success).toBe(false);
+  });
+
+  it("rejects fractional progress percentages", () => {
+    const response = {
+      year: 2026,
+      targetBooks: 12,
+      completedBooks: 6,
+      progressPercent: 50.5,
+    };
+
+    expect(readingGoalResponseSchema.safeParse(response).success).toBe(false);
   });
 });

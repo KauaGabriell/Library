@@ -7,4 +7,8 @@ export const readingGoalResponseSchema = z.object({
   progressPercent: z.int().min(0).max(100),
 });
 
+export const readingGoalDeleteResponseSchema = z
+  .undefined()
+  .describe("Meta de leitura removida; resposta sem corpo");
+
 export type ReadingGoalResponse = z.infer<typeof readingGoalResponseSchema>;
