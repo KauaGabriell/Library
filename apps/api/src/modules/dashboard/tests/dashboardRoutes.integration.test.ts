@@ -202,4 +202,128 @@ describe("GET /dashboard", () => {
     ).toEqual([ownBook.title]);
     expect(response.json().recentEntries[0].book.title).not.toBe(foreignBook.title);
   });
+
+  it("recalculates goal progress after status changes and entry deletion", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const goalResponse = await app.inject({
+      method: "PUT",
+      url: "/reading-goal",
+      headers: { cookie },
+      payload: { targetBooks: 2 },
+    });
+    const { entry } = await createEntry(user.id);
+
+    expect(goalResponse.statusCode).toBe(200);
+    expect(goalResponse.json()).toMatchObject({
+      targetBooks: 2,
+      completedBooks: 0,
+      progressPercent: 0,
+    });
+
+    const markAsRead = await app.inject({
+      method: "PATCH",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+      payload: { status: "READ" },
+    });
+    const afterStatusChange = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie },
+    });
+
+    expect(markAsRead.statusCode).toBe(200);
+    expect(afterStatusChange.json().readingGoal).toMatchObject({
+      targetBooks: 2,
+      completedBooks: 1,
+      progressPercent: 50,
+    });
+
+    const deleteEntry = await app.inject({
+      method: "DELETE",
+      url: `/library/${entry.id}`,
+      headers: { cookie },
+    });
+    const afterDeletion = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie },
+    });
+
+    expect(deleteEntry.statusCode).toBe(204);
+    expect(afterDeletion.json().readingGoal).toMatchObject({
+      targetBooks: 2,
+      completedBooks: 0,
+      progressPercent: 0,
+    });
+  });
+
+  it("caps progress at 100 percent when completed books exceed the goal", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const goalResponse = await app.inject({
+      method: "PUT",
+      url: "/reading-goal",
+      headers: { cookie },
+      payload: { targetBooks: 2 },
+    });
+    await createEntry(user.id, { status: "READ" });
+    await createEntry(user.id, { status: "READ" });
+
+    const atGoal = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie },
+    });
+    await createEntry(user.id, { status: "READ" });
+    const aboveGoal = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie },
+    });
+
+    expect(goalResponse.statusCode).toBe(200);
+    expect(atGoal.json().readingGoal).toMatchObject({
+      targetBooks: 2,
+      completedBooks: 2,
+      progressPercent: 100,
+    });
+    expect(aboveGoal.json().readingGoal).toMatchObject({
+      targetBooks: 2,
+      completedBooks: 3,
+      progressPercent: 100,
+    });
+  });
+
+  it("uses only the authenticated user's completed books for progress", async () => {
+    const owner = await authenticatedUser();
+    const otherUser = await authenticatedUser();
+    const ownerGoal = await app.inject({
+      method: "PUT",
+      url: "/reading-goal",
+      headers: { cookie: owner.cookie },
+      payload: { targetBooks: 10 },
+    });
+    await app.inject({
+      method: "PUT",
+      url: "/reading-goal",
+      headers: { cookie: otherUser.cookie },
+      payload: { targetBooks: 30 },
+    });
+    await createEntry(owner.user.id, { status: "READ" });
+    await createEntry(otherUser.user.id, { status: "READ" });
+    await createEntry(otherUser.user.id, { status: "READ" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie: owner.cookie },
+    });
+
+    expect(ownerGoal.statusCode).toBe(200);
+    expect(response.json().readingGoal).toMatchObject({
+      targetBooks: 10,
+      completedBooks: 1,
+      progressPercent: 10,
+    });
+  });
 });
