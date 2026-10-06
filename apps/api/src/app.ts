@@ -18,6 +18,7 @@ import { bookRoutes } from "./modules/books/bookRoutes";
 import { dashboardRoutes } from "./modules/dashboard/dashboardRoutes";
 import { libraryRoutes } from "./modules/library/libraryRoutes";
 import { notesRoutes } from "./modules/notes/notesRoutes";
+import { readingGoalRoutes } from "./modules/readingGoal/readingGoalRoutes";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: loggerConfig });
@@ -65,6 +66,7 @@ app.register(fastifyRateLimit, {
 
 app.register(authRoutes, { prefix: "/auth" });
 app.register(bookRoutes, { prefix: "/books" });
+app.register(readingGoalRoutes, { prefix: "/reading-goal" });
 app.register(libraryRoutes);
 app.register(notesRoutes);
 app.register(dashboardRoutes);

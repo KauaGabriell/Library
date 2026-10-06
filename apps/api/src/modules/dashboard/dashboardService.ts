@@ -1,5 +1,6 @@
 import type { DashboardSummaryResponse } from "@library/contracts";
 import { mapLibraryEntryToPublicResponse } from "../library/libraryMapper";
+import { readingGoalService } from "../readingGoal/readingGoalService";
 import { dashboardRepository } from "./dashboardRepository";
 
 export const dashboardService = {
@@ -24,6 +25,8 @@ export const dashboardService = {
 
     const { rating } = avg._avg;
 
+    const readingGoal = await readingGoalService.getReadingGoal(userId);
+
     const dashboard: DashboardSummaryResponse = {
       totalBooks,
       recentEntries: recentsMapped,
@@ -33,7 +36,7 @@ export const dashboardService = {
         READ: countByStatus.READ,
       },
       averageRating: rating,
-      readingGoal: null,
+      readingGoal: readingGoal ?? null,
     };
     return dashboard;
   },
