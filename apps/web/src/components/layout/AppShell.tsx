@@ -1,9 +1,35 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 const navigationItems = [
-  { href: "/dashboard", label: "Painel" },
-  { href: "/library", label: "Biblioteca" },
-  { href: "/search", label: "Buscar livros" },
+  {
+    href: "/dashboard",
+    label: "Painel",
+    icon: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+  },
+  {
+    href: "/library",
+    label: "Biblioteca",
+    icon: (
+      <path d="M12 5v15M12 5C9 3 6 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z" />
+    ),
+  },
+  {
+    href: "/search",
+    label: "Buscar livros",
+    icon: (
+      <>
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m16 16 5 5" />
+      </>
+    ),
+  },
 ];
 
 type AppShellProps = {
@@ -20,7 +46,7 @@ function NavigationLinks({
 }) {
   return (
     <ul className="flex flex-col gap-1">
-      {navigationItems.map(({ href, label }) => {
+      {navigationItems.map(({ href, label, icon }) => {
         const isActive =
           activeHref === href || activeHref.startsWith(`${href}/`);
 
@@ -30,9 +56,22 @@ function NavigationLinks({
               href={href}
               aria-current={isActive ? "page" : undefined}
               onClick={onNavigate}
-              className={`block min-h-11 border-l-2 px-3 py-2 text-body-sm font-semibold transition-colors motion-reduce:transition-none ${isActive ? "border-l-brand-primary bg-background-surface text-text-primary" : "border-l-transparent text-text-secondary hover:bg-background-surface hover:text-text-primary"}`}
+              className={`group flex min-h-11 items-center gap-3 rounded-r-field border-l-2 px-3 py-2 text-body-sm font-semibold transition-colors duration-200 ease-out motion-reduce:transition-none ${isActive ? "border-l-brand-primary bg-text-primary/8 text-text-primary" : "border-l-transparent text-text-secondary hover:bg-text-primary/4 hover:text-text-primary focus-visible:bg-text-primary/4 focus-visible:text-text-primary"}`}
             >
-              {label}
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`size-5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none motion-reduce:translate-none motion-reduce:transition-none ${isActive ? "text-brand-primary" : ""}`}
+              >
+                {icon}
+              </svg>
+              <span>{label}</span>
             </a>
           </li>
         );
