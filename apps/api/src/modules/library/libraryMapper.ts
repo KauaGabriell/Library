@@ -8,7 +8,7 @@ import {
 
 type LibraryEntryForMapping = Omit<
   LibraryEntryPublicResponse,
-  "createdAt" | "updatedAt"
+  "createdAt" | "updatedAt" | "progressPercent"
 > & {
   createdAt: Date;
   updatedAt: Date;
@@ -23,6 +23,21 @@ type LibraryEntryDetailsForMapping = LibraryEntryForMapping & {
   notes: NoteForMapping[];
 };
 
+function getProgressPercent(entry: LibraryEntryForMapping): number | null {
+  if (entry.status === "READ") return 100;
+
+  if (
+    entry.status !== "READING" ||
+    entry.currentPage === null ||
+    entry.book.pageCount === null ||
+    entry.book.pageCount <= 0
+  ) {
+    return null;
+  }
+
+  return Math.floor((entry.currentPage / entry.book.pageCount) * 100);
+}
+
 export function mapLibraryEntryToPublicResponse(
   entry: LibraryEntryForMapping,
 ): LibraryEntryPublicResponse {
@@ -30,6 +45,7 @@ export function mapLibraryEntryToPublicResponse(
     id: entry.id,
     status: entry.status,
     currentPage: entry.currentPage,
+    progressPercent: getProgressPercent(entry),
     rating: entry.rating,
     review: entry.review,
     createdAt: entry.createdAt.toISOString(),

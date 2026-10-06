@@ -10,7 +10,7 @@ export const manualBookSchema = z.object({
   description: z.string().optional(),
   coverUrl: z.string().optional(),
   language: z.string().min(1).optional(),
-  pageCount: z.int().optional(),
+  pageCount: z.int().min(1).optional(),
 });
 
 export const bookPublicResponse = z.object({

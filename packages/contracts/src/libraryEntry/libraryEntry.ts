@@ -15,7 +15,7 @@ const manualCreateSchema = z.strictObject({
   description: z.string().optional(),
   coverUrl: z.string().optional(),
   language: z.string().optional(),
-  pageCount: z.int().optional(),
+  pageCount: z.int().min(1).optional(),
 });
 
 export const libraryEntryCreateSchema = z.discriminatedUnion("source", [
@@ -51,6 +51,7 @@ export const libraryEntryPublicResponseSchema = z.object({
   id: z.uuid(),
   status: readingStateSchema,
   currentPage: z.int().min(0).nullable(),
+  progressPercent: z.int().min(0).max(100).nullable(),
   rating: z.int().min(1).max(5).nullable(),
   review: z.string().min(1).nullable(),
   book: bookPublicResponse,

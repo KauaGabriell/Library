@@ -6,12 +6,12 @@ import {
   type LibraryEntryListQuery,
   type LibraryEntryListResponse,
   type LibraryEntryPublicResponse,
-  type PublicNoteResponse,
   libraryEntryCreateSchema,
   libraryEntryDetailPublicResponseSchema,
   libraryEntryListResponseSchema,
   libraryEntryListSchema,
   libraryEntryPublicResponseSchema,
+  type PublicNoteResponse,
 } from "@library/contracts";
 import { describe, expect, it } from "vitest";
 
@@ -48,20 +48,34 @@ describe("library entry public exports", () => {
 
   it.each([
     ["missing Google Books ID", { source: "GOOGLE_BOOKS" }],
-    ["client-provided catalog metadata", {
-      source: "GOOGLE_BOOKS",
-      googleBooksId: "google-book-123",
-      title: "Client title",
-    }],
+    [
+      "client-provided catalog metadata",
+      {
+        source: "GOOGLE_BOOKS",
+        googleBooksId: "google-book-123",
+        title: "Client title",
+      },
+    ],
     ["unknown source", { source: "OTHER", title: "Manual title" }],
     ["manual input without title", { source: "MANUAL" }],
+    [
+      "manual page count of zero",
+      { source: "MANUAL", title: "Manual title", pageCount: 0 },
+    ],
+    [
+      "negative manual page count",
+      { source: "MANUAL", title: "Manual title", pageCount: -1 },
+    ],
   ])("rejects invalid book creation input: %s", (_caseName, input) => {
     expect(libraryEntryCreateSchema.safeParse(input).success).toBe(false);
   });
 
   it("defaults omitted manual authors to an empty array", () => {
     expect(
-      libraryEntryCreateSchema.parse({ source: "MANUAL", title: "Manual title" }),
+      libraryEntryCreateSchema.parse({
+        source: "MANUAL",
+        title: "Manual title",
+      }),
     ).toEqual({ source: "MANUAL", title: "Manual title", authors: [] });
   });
 
@@ -110,6 +124,7 @@ describe("library entry public exports", () => {
       id: "7c6a3ca5-6598-4bf4-89dd-52acff6ebec6",
       status: "READING",
       currentPage: null,
+      progressPercent: null,
       rating: null,
       review: null,
       book,

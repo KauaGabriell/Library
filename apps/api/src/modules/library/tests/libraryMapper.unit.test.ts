@@ -1,5 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { mapLibraryEntryDetailsToPublicResponse } from "../libraryMapper";
+import {
+  mapLibraryEntryDetailsToPublicResponse,
+  mapLibraryEntryToPublicResponse,
+} from "../libraryMapper";
+
+describe("mapLibraryEntryToPublicResponse", () => {
+  const entry = {
+    id: "7c6a3ca5-6598-4bf4-89dd-52acff6ebec6",
+    status: "READING" as const,
+    currentPage: 45,
+    rating: null,
+    review: null,
+    createdAt: new Date("2026-10-01T10:00:00.000Z"),
+    updatedAt: new Date("2026-10-01T11:00:00.000Z"),
+    book: {
+      googleBooksId: "google-book-123",
+      title: "Livro de teste",
+      authors: ["Autora"],
+      description: null,
+      coverUrl: null,
+      language: null,
+      pageCount: 200,
+    },
+  };
+
+  it.each([
+    ["reading with known page count", "READING", 45, 200, 22],
+    ["completed book", "READ", 45, 200, 100],
+    ["reading without page count", "READING", 45, null, null],
+    ["reading without current page", "READING", null, 200, null],
+    ["not started", "WANT_TO_READ", 0, 200, null],
+  ] as const)(
+    "returns progress for %s",
+    (_caseName, status, currentPage, pageCount, progressPercent) => {
+      const result = mapLibraryEntryToPublicResponse({
+        ...entry,
+        status,
+        currentPage,
+        book: { ...entry.book, pageCount },
+      });
+
+      expect(result.progressPercent).toBe(progressPercent);
+    },
+  );
+});
 
 describe("mapLibraryEntryDetailsToPublicResponse", () => {
   it("converts entry and note dates to ISO and omits internal fields", () => {
