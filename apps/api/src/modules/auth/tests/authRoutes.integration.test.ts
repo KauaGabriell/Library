@@ -8,6 +8,7 @@ import { hashToken } from "../sessionToken";
 async function clearDatabase() {
   await prisma.session.deleteMany();
   await prisma.oAuthAccount.deleteMany();
+  await prisma.readingGoal.deleteMany();
   await prisma.user.deleteMany();
 }
 

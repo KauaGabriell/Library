@@ -16,6 +16,7 @@ import { prisma } from "../../../lib/prisma";
 async function clearDatabase() {
   await prisma.session.deleteMany();
   await prisma.oAuthAccount.deleteMany();
+  await prisma.readingGoal.deleteMany();
   await prisma.user.deleteMany();
 }
 

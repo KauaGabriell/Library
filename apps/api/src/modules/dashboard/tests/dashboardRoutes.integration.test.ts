@@ -55,6 +55,9 @@ afterEach(async () => {
     where: { userId: { in: [...userIds] } },
   });
   await prisma.book.deleteMany({ where: { id: { in: [...bookIds] } } });
+  await prisma.readingGoal.deleteMany({
+    where: { userId: { in: [...userIds] } },
+  });
   await prisma.session.deleteMany({ where: { userId: { in: [...userIds] } } });
   await prisma.user.deleteMany({ where: { id: { in: [...userIds] } } });
   userIds.clear();

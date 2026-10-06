@@ -14,6 +14,7 @@ async function clearDatabase() {
   await prisma.oAuthAuthorization.deleteMany();
   await prisma.session.deleteMany();
   await prisma.oAuthAccount.deleteMany();
+  await prisma.readingGoal.deleteMany();
   await prisma.user.deleteMany();
 }
 
