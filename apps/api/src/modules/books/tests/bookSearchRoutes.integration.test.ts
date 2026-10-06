@@ -94,13 +94,16 @@ describe("GET /books/search", () => {
     ["blank term", "/books/search?q=%20%20"],
     ["invalid page", "/books/search?q=book&page=0"],
     ["invalid page size", "/books/search?q=book&pageSize=41"],
-  ])("returns a validation error for %s", async (_case, url) => {
-    const response = await app.inject({ method: "GET", url });
+  ])(
+    "returns a validation error for %s",
+    async (_case: string, url: string) => {
+      const response = await app.inject({ method: "GET", url });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
-    expect(catalogMock.search).not.toHaveBeenCalled();
-  });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(catalogMock.search).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns a standardized integration error when the catalog fails", async () => {
     catalogMock.search.mockRejectedValue(

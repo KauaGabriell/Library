@@ -112,7 +112,7 @@ export const authService = {
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
+        (error as Prisma.PrismaClientKnownRequestError).code === "P2002"
       ) {
         throw new AppError("Usuário já cadastrado", 409, "CONFLICT");
       }

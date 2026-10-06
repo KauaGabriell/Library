@@ -5,14 +5,12 @@ import { AppError } from "../errors/appError";
 import { Prisma } from "../generated/prisma/client";
 
 export function isDuplicateLibraryEntry(error: unknown): boolean {
-  if (
-    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-    error.code !== "P2002"
-  ) {
-    return false;
-  }
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
 
-  const metadata = error.meta as
+  const prismaError = error as Prisma.PrismaClientKnownRequestError;
+  if (prismaError.code !== "P2002") return false;
+
+  const metadata = prismaError.meta as
     | {
         modelName?: string;
         target?: unknown;

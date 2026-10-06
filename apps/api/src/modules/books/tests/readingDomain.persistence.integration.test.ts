@@ -182,17 +182,20 @@ describe("reading domain persistence", () => {
     expect(goals.map(({ year }) => year)).toEqual([2026, 2027]);
   });
 
-  it.each([1, 999])("accepts targetBooks=%i", async (targetBooks) => {
-    const user = await createUser();
+  it.each([1, 999])(
+    "accepts targetBooks=%i",
+    async (targetBooks: number) => {
+      const user = await createUser();
 
-    const goal = await createReadingGoal(user.id, 2026, targetBooks);
+      const goal = await createReadingGoal(user.id, 2026, targetBooks);
 
-    expect(goal.targetBooks).toBe(targetBooks);
-  });
+      expect(goal.targetBooks).toBe(targetBooks);
+    },
+  );
 
   it.each([0, 1000])(
     "rejects targetBooks=%i at database level",
-    async (targetBooks) => {
+    async (targetBooks: number) => {
       const user = await createUser();
 
       await expect(

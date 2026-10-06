@@ -135,18 +135,26 @@ describe("libraryService.updateLibrary evaluation validation", () => {
     { description: "rating", patch: { rating: 5 } },
     { description: "review text", patch: { review: "Ainda estou lendo" } },
     { description: "clearing review", patch: { review: null } },
-  ])("rejects $description unless resulting status is READ", async ({ patch }) => {
-    await expect(
-      libraryService.updateLibrary({ ...updateParams, patch }),
-    ).rejects.toMatchObject({
-      statusCode: 400,
-      code: "VALIDATION_ERROR",
-      message:
-        "Avaliação e resenha só podem ser alteradas quando o livro estiver marcado como lido",
-    });
+  ])(
+    "rejects $description unless resulting status is READ",
+    async ({
+      patch,
+    }: {
+      description: string;
+      patch: Parameters<typeof libraryService.updateLibrary>[0]["patch"];
+    }) => {
+      await expect(
+        libraryService.updateLibrary({ ...updateParams, patch }),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: "VALIDATION_ERROR",
+        message:
+          "Avaliação e resenha só podem ser alteradas quando o livro estiver marcado como lido",
+      });
 
-    expect(repositoryMock.updateLibrary).not.toHaveBeenCalled();
-  });
+      expect(repositoryMock.updateLibrary).not.toHaveBeenCalled();
+    },
+  );
 
   it("allows changing status away from READ without changing its evaluation", async () => {
     repositoryMock.findById.mockResolvedValue(completedEntry);

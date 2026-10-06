@@ -115,7 +115,7 @@ describe("GET /auth/google/callback", () => {
       url: `/auth/google/callback?code=google-authorization-code&state=${state}`,
     });
     const sessionToken = response.cookies.find(
-      (cookie) => cookie.name === "session",
+      (cookie: { name: string; value: string }) => cookie.name === "session",
     )?.value;
 
     if (!sessionToken) throw new Error("Cookie de sessão não retornado");

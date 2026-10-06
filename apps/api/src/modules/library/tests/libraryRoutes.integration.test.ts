@@ -525,18 +525,21 @@ describe("GET /library", () => {
     ["invalid status", "status=INVALID"],
     ["page below minimum", "page=0"],
     ["page size above maximum", "pageSize=201"],
-  ])("returns a validation error for %s", async (_description, query) => {
-    const { cookie } = await authenticatedUser();
+  ])(
+    "returns a validation error for %s",
+    async (_description: string, query: string) => {
+      const { cookie } = await authenticatedUser();
 
-    const response = await app.inject({
-      method: "GET",
-      url: `/library?${query}`,
-      headers: { cookie },
-    });
+      const response = await app.inject({
+        method: "GET",
+        url: `/library?${query}`,
+        headers: { cookie },
+      });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
-  });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+    },
+  );
 });
 
 describe("GET /library/:libraryId", () => {
@@ -916,32 +919,40 @@ describe("PATCH /library/:id", () => {
       options: {},
       patch: { rating: 4 },
     },
-  ])("rejects $description without persisting the patch", async (scenario) => {
-    const { user, cookie } = await authenticatedUser();
-    const { entry } = await createLibraryFixture(
-      user.id,
-      scenario.status,
-      scenario.options,
-    );
+  ])(
+    "rejects $description without persisting the patch",
+    async (scenario: {
+      description: string;
+      status: "WANT_TO_READ" | "READING" | "READ";
+      options: Parameters<typeof createLibraryFixture>[2];
+      patch: { currentPage?: number; rating?: number };
+    }) => {
+      const { user, cookie } = await authenticatedUser();
+      const { entry } = await createLibraryFixture(
+        user.id,
+        scenario.status,
+        scenario.options,
+      );
 
-    const response = await app.inject({
-      method: "PATCH",
-      url: `/library/${entry.id}`,
-      headers: { cookie },
-      payload: scenario.patch,
-    });
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/library/${entry.id}`,
+        headers: { cookie },
+        payload: scenario.patch,
+      });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
-    expect(
-      await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
-    ).toMatchObject({
-      status: entry.status,
-      currentPage: entry.currentPage,
-      rating: entry.rating,
-      review: entry.review,
-    });
-  });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(
+        await prisma.libraryEntry.findUniqueOrThrow({ where: { id: entry.id } }),
+      ).toMatchObject({
+        status: entry.status,
+        currentPage: entry.currentPage,
+        rating: entry.rating,
+        review: entry.review,
+      });
+    },
+  );
 
   it("returns the same not-found response for foreign and missing entries", async () => {
     const owner = await authenticatedUser();

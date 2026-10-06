@@ -71,7 +71,7 @@ describe("POST /library/:libraryId/notes", () => {
 
   it.each(["READING", "READ"] as const)(
     "creates a public note when entry status is %s",
-    async (status) => {
+    async (status: "READING" | "READ") => {
       const { user, cookie } = await authenticatedUser();
       const entry = await createEntry(user.id, status);
 
@@ -154,23 +154,26 @@ describe("POST /library/:libraryId/notes", () => {
     ["missing content", {}],
     ["blank content", { content: "  \n " }],
     ["content over limit", { content: "a".repeat(10_001) }],
-  ])("rejects %s", async (_scenario, payload) => {
-    const { user, cookie } = await authenticatedUser();
-    const entry = await createEntry(user.id, "READING");
+  ])(
+    "rejects %s",
+    async (_scenario: string, payload: { content?: string }) => {
+      const { user, cookie } = await authenticatedUser();
+      const entry = await createEntry(user.id, "READING");
 
-    const response = await app.inject({
-      method: "POST",
-      url: `/library/${entry.id}/notes`,
-      headers: { cookie },
-      payload,
-    });
+      const response = await app.inject({
+        method: "POST",
+        url: `/library/${entry.id}/notes`,
+        headers: { cookie },
+        payload,
+      });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
-    expect(await prisma.note.count({ where: { libraryEntryId: entry.id } })).toBe(
-      0,
-    );
-  });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(
+        await prisma.note.count({ where: { libraryEntryId: entry.id } }),
+      ).toBe(0);
+    },
+  );
 
   it("rejects an invalid library entry ID", async () => {
     const { cookie } = await authenticatedUser();
@@ -201,7 +204,7 @@ describe("PATCH /notes/:noteId", () => {
 
   it.each(["READING", "READ"] as const)(
     "updates a note when entry status is %s",
-    async (status) => {
+    async (status: "READING" | "READ") => {
       const { user, cookie } = await authenticatedUser();
       const entry = await createEntry(user.id, status);
       const note = await prisma.note.create({
@@ -295,7 +298,7 @@ describe("DELETE /notes/:noteId", () => {
 
   it.each(["READING", "READ"] as const)(
     "deletes a note when entry status is %s with an empty 204 response",
-    async (status) => {
+    async (status: "READING" | "READ") => {
       const { user, cookie } = await authenticatedUser();
       const entry = await createEntry(user.id, status);
       const note = await prisma.note.create({

@@ -191,7 +191,7 @@ describe("Google Books catalog adapter", () => {
 
   it.each([404, 503])(
     "maps Google Books HTTP status %i to an integration error",
-    async (status) => {
+    async (status: number) => {
       const fetchMock = createFetchMock(new Response(null, { status }));
       const catalog = createGoogleBooksCatalog({ fetchImpl: fetchMock });
 
