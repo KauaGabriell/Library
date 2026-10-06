@@ -132,7 +132,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 | RF-006 | Gerir biblioteca | Must | Usuário lista, filtra, atualiza status, página atual quando estiver `READING` e remove apenas suas entradas. |
 | RF-007 | Avaliar e resenhar | Must | Rating inteiro entre 1–5 e review só são aceitos se estado resultante for `READ`. |
 | RF-008 | Gerir anotações | Must | Criar/editar/excluir Note só é permitido ao owner de LibraryEntry em `READING` ou `READ`; `WANT_TO_READ` bloqueia mutação. |
-| RF-009 | Dashboard | Should | Exibe contagem por status, média de ratings de `READ` e itens recentes do usuário. |
+| RF-009 | Dashboard | Should | Exibe contagem por status, média de ratings de `READ`, itens recentes e meta anual opcional do usuário (`readingGoal: null` quando ausente). |
 | RF-010 | Quiz | Must | Formulário exige respostas válidas antes de chamar API; usuário pode voltar sem perder respostas. |
 | RF-011 | Recomendação IA | Must | Retorna exatamente três sugestões únicas, estruturadas e explicadas, ou fallback de indisponibilidade. |
 | RF-012 | Salvar recomendação | Must | Cada recomendação pode usar mesmo fluxo de inclusão e comunica conflito/sucesso. |
@@ -165,7 +165,9 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 ### Meta anual de leitura
 
 - `ReadingGoal` é privada, opcional e tem unicidade em `(userId, year)`; no MVP, a UI administra apenas a meta do ano-calendário atual.
-- `targetBooks` é inteiro entre 1 e 999. A criação e atualização usam upsert; remoção exclui apenas a meta, nunca registros de leitura.
+- `GET /dashboard` sempre inclui `readingGoal`: meta do ano atual ou `null`. A ausência da meta não bloqueia o dashboard. `GET /reading-goal` continua retornando 404 quando a meta do ano atual não existe.
+- A requisição envia somente `targetBooks`; a API calcula o ano atual no fuso `America/Sao_Paulo`. A resposta mantém `year`.
+- `targetBooks` é inteiro entre 1 e 999. `PUT /reading-goal` usa upsert pela chave `(userId, year)`; remoção exclui apenas a meta, nunca registros de leitura.
 - `completedBooks` não é persistido: é calculado a partir do status atual `READ` das `LibraryEntry` do owner. Assim, uma transição de/para `READ` e uma exclusão são refletidas no próximo carregamento.
 - `progressPercent = min(100, floor(completedBooks / targetBooks * 100))`; a contagem não é limitada, portanto 15 leituras em meta 12 continua exibindo `15 de 12`.
 
