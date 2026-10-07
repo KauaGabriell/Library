@@ -1,6 +1,7 @@
 export type { GoogleCallbackQuery } from "./google/googleCallback.js";
 export { googleCallbackQuerySchema } from "./google/googleCallback.js";
-export { loginRequestInput, loginRequestSchema } from "./login.js";
+export type { loginRequestInput } from "./login.js";
+export { loginRequestSchema } from "./login.js";
 export type {
   PublicUser,
   RegisterRequestInput,
