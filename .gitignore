@@ -4,6 +4,8 @@ docs-dev
 # DEPS
 node_modules
 .pnpm-store
+apps/web/test-results/
+apps/web/playwright-report/
 
 # GRAPHIFY
 graphify-out/
