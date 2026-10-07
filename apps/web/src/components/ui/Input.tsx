@@ -83,7 +83,7 @@ export function Input({
         <p
           id={errorMessageId}
           role="alert"
-          className="text-sm text-(--color-feedback-error)"
+          className="text-sm text-feedback-error"
         >
           {error}
         </p>
