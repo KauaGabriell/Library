@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AppShell } from "./components/layout/AppShell";
+import { Link } from "react-router";
 import { Button } from "./components/ui/Button";
 import { Card } from "./components/ui/Card";
 import { Dialog } from "./components/ui/Dialog";
@@ -14,7 +14,7 @@ export function App() {
   const [retryCount, setRetryCount] = useState(0);
 
   return (
-    <AppShell activeHref={window.location.pathname}>
+    <>
       <div className="flex flex-col gap-10">
         <section aria-labelledby="welcome-title" className="max-w-3xl">
           <p className="mb-3 text-label-sm uppercase tracking-[0.16em] text-brand-primary">
@@ -37,12 +37,12 @@ export function App() {
             title="Sua biblioteca começa com um livro"
             description="Busque o próximo título que quer ler e adicione-o à sua biblioteca pessoal."
             action={
-              <a
-                href="/search"
+              <Link
+                to="/search"
                 className="inline-flex min-h-11 items-center justify-center rounded-field bg-brand-primary px-4 py-2 text-label-md text-background-canvas transition-colors hover:bg-brand-primary-hover motion-reduce:transition-none"
               >
                 Buscar livros
-              </a>
+              </Link>
             }
           />
         </Card>
@@ -139,6 +139,6 @@ export function App() {
           </Button>
         </div>
       </Dialog>
-    </AppShell>
+    </>
   );
 }

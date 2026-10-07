@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { Link, NavLink } from "react-router";
 
 const navigationItems = [
   {
@@ -34,45 +35,40 @@ const navigationItems = [
 
 type AppShellProps = {
   children: ReactNode;
-  activeHref?: string;
 };
 
-function NavigationLinks({
-  activeHref,
-  onNavigate,
-}: {
-  activeHref: string;
-  onNavigate?: () => void;
-}) {
+function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <ul className="flex flex-col gap-1">
       {navigationItems.map(({ href, label, icon }) => {
-        const isActive =
-          activeHref === href || activeHref.startsWith(`${href}/`);
-
         return (
           <li key={href}>
-            <a
-              href={href}
-              aria-current={isActive ? "page" : undefined}
+            <NavLink
+              to={href}
               onClick={onNavigate}
-              className={`group flex min-h-11 items-center gap-3 rounded-r-field border-l-2 px-3 py-2 text-body-sm font-semibold transition-colors duration-200 ease-out motion-reduce:transition-none ${isActive ? "border-l-brand-primary bg-text-primary/8 text-text-primary" : "border-l-transparent text-text-secondary hover:bg-text-primary/4 hover:text-text-primary focus-visible:bg-text-primary/4 focus-visible:text-text-primary"}`}
+              className={({ isActive }) =>
+                `group flex min-h-11 items-center gap-3 rounded-r-field border-l-2 px-3 py-2 text-body-sm font-semibold transition-colors duration-200 ease-out motion-reduce:transition-none ${isActive ? "border-l-brand-primary bg-text-primary/8 text-text-primary" : "border-l-transparent text-text-secondary hover:bg-text-primary/4 hover:text-text-primary focus-visible:bg-text-primary/4 focus-visible:text-text-primary"}`
+              }
             >
-              <svg
-                aria-hidden="true"
-                focusable="false"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`size-5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none motion-reduce:translate-none motion-reduce:transition-none ${isActive ? "text-brand-primary" : ""}`}
-              >
-                {icon}
-              </svg>
-              <span>{label}</span>
-            </a>
+              {({ isActive }) => (
+                <>
+                  <svg
+                    aria-hidden="true"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`size-5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none motion-reduce:translate-none motion-reduce:transition-none ${isActive ? "text-brand-primary" : ""}`}
+                  >
+                    {icon}
+                  </svg>
+                  <span>{label}</span>
+                </>
+              )}
+            </NavLink>
           </li>
         );
       })}
@@ -80,7 +76,7 @@ function NavigationLinks({
   );
 }
 
-export function AppShell({ children, activeHref = "/" }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -132,12 +128,12 @@ export function AppShell({ children, activeHref = "/" }: AppShellProps) {
               )}
             </svg>
           </button>
-          <a
-            href="/dashboard"
+          <Link
+            to="/dashboard"
             className="font-heading text-heading-md font-semibold tracking-tight"
           >
             Literaria
-          </a>
+          </Link>
           <span className="ml-auto hidden text-label-sm text-text-muted sm:block">
             Sua biblioteca, no seu ritmo
           </span>
@@ -147,18 +143,18 @@ export function AppShell({ children, activeHref = "/" }: AppShellProps) {
           aria-label="Navegação principal"
           className={`${menuOpen ? "block" : "hidden"} border-t border-border-default bg-background-canvas px-4 py-3 md:px-6 lg:hidden`}
         >
-          <NavigationLinks activeHref={activeHref} onNavigate={closeMenu} />
+          <NavigationLinks onNavigate={closeMenu} />
         </nav>
       </header>
 
       <div className="grid min-h-[calc(100vh-4rem)] w-full lg:grid-cols-[12.5rem_minmax(0,1fr)]">
         <aside className="hidden border-r border-border-default bg-background-subtle px-4 py-8 lg:block">
           <nav aria-label="Navegação principal">
-            <NavigationLinks activeHref={activeHref} />
+            <NavigationLinks />
           </nav>
         </aside>
         <main id="main-content" className="min-w-0">
-          <div className="mx-auto w-full max-w-[80rem] px-4 py-8 md:px-6 lg:px-12 lg:py-12">
+          <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 lg:px-12 lg:py-12">
             {children}
           </div>
         </main>
