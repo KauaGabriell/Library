@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { NavLink, useLocation, useOutlet } from "react-router";
 import libraryBackground from "../../assets/libraryBackground.jpg";
-import { Button } from "../ui/Button";
+import { envConfig } from "../../config/env";
 import { TransitionPanel } from "../ui/TransitionPanel";
 
 const tabClassName = (active: boolean) =>
@@ -78,9 +78,9 @@ export function AuthLayout() {
           <span className="h-px flex-1 bg-border-default/40" />
         </div>
 
-        <Button
-          variant="secondary"
-          className="mt-4 w-full bg-background-canvas text-xs font-normal"
+        <a
+          href={`${envConfig.VITE_API_URL}/auth/google`}
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-background-canvas px-4 py-2 text-xs font-normal text-(--color-text-primary) transition-colors hover:border-(--color-brand-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-brand-primary) motion-reduce:transition-none"
         >
           <span
             aria-hidden="true"
@@ -89,7 +89,7 @@ export function AuthLayout() {
             G
           </span>
           Continuar com Google
-        </Button>
+        </a>
 
         <p className="mt-6 text-center text-xs leading-relaxed text-text-muted">
           Ao continuar, você concorda com nossos <u>Termos de Serviço</u> e{" "}

@@ -7,6 +7,7 @@ import { App } from "./app.tsx";
 import { AppShell } from "./components/layout/AppShell.tsx";
 import { AuthLayout } from "./components/layout/AuthLayout.tsx";
 import { Dashboard } from "./components/pages/Dashboard.tsx";
+import { GoogleOAuthCallback } from "./components/pages/GoogleOAuthCallback.tsx";
 import { Library } from "./components/pages/Library.tsx";
 import { Login } from "./components/pages/Login.tsx";
 import { NotFound } from "./components/pages/NotFound.tsx";
@@ -25,6 +26,10 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </Route>
+          <Route
+            path="/auth/google/callback"
+            element={<GoogleOAuthCallback />}
+          />
 
           <Route
             element={
