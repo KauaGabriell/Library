@@ -6,6 +6,7 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   reporter: "list",
+  workers: 1,
   use: {
     baseURL,
     trace: "retain-on-failure",
