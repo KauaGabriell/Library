@@ -223,6 +223,91 @@ test.describe("Cadastro", () => {
   });
 });
 
+test.describe("Logout", () => {
+  test("encerra a sessão e impede o retorno a uma rota privada", async ({
+    page,
+  }) => {
+    let sessionEnded = false;
+    let unauthenticatedCheckCount = 0;
+
+    await page.route(`${apiUrl}/auth/me`, async (route) => {
+      if (sessionEnded) {
+        unauthenticatedCheckCount += 1;
+        await route.fulfill({
+          status: 401,
+          json: {
+            code: "UNAUTHENTICATED",
+            message: "Não autenticado.",
+          },
+        });
+        return;
+      }
+
+      await route.fulfill({ status: 200, json: publicUser });
+    });
+    await page.route(`${apiUrl}/auth/logout`, async (route) => {
+      expect(route.request().method()).toBe("POST");
+      sessionEnded = true;
+      await route.fulfill({ status: 204 });
+    });
+
+    await page.goto("/dashboard");
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Buscar livros" }).click();
+    await expect(page).toHaveURL(/\/search$/);
+
+    await page.getByRole("button", { name: "Sair" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+
+    await page.goBack();
+
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(
+      page.getByRole("heading", { name: "Literaria" }),
+    ).toBeVisible();
+    expect(unauthenticatedCheckCount).toBeGreaterThan(0);
+  });
+
+  test("mostra falha e permite tentar logout novamente", async ({ page }) => {
+    let logoutAttemptCount = 0;
+
+    await page.route(`${apiUrl}/auth/me`, async (route) => {
+      await route.fulfill({ status: 200, json: publicUser });
+    });
+    await page.route(`${apiUrl}/auth/logout`, async (route) => {
+      logoutAttemptCount += 1;
+
+      if (logoutAttemptCount === 1) {
+        await route.fulfill({
+          status: 500,
+          json: {
+            code: "INTERNAL_ERROR",
+            message: "Falha ao encerrar sessão.",
+          },
+        });
+        return;
+      }
+
+      await route.fulfill({ status: 204 });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Sair" }).click();
+
+    await expect(page.getByRole("alert")).toContainText(
+      "Falha ao encerrar sessão.",
+    );
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await page.getByRole("button", { name: "Tentar novamente" }).click();
+
+    await expect(page).toHaveURL(/\/login$/);
+    expect(logoutAttemptCount).toBe(2);
+  });
+});
+
 test.describe("Proteção de rota", () => {
   test("redireciona para login quando sessão está ausente", async ({
     page,

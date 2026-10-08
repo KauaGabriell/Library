@@ -1,85 +1,105 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
+import { BookOpen, LayoutGrid, LogOut, Menu, Search, X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { Link, NavLink } from "react-router";
+import { Link, NavLink, useNavigate } from "react-router";
+import { api } from "../../lib/api";
+import { Button } from "../ui/Button";
+import { ErrorState } from "../ui/ErrorState";
 
 const navigationItems = [
-  {
-    href: "/dashboard",
-    label: "Painel",
-    icon: (
-      <>
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </>
-    ),
-  },
-  {
-    href: "/library",
-    label: "Biblioteca",
-    icon: (
-      <path d="M12 5v15M12 5C9 3 6 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z" />
-    ),
-  },
-  {
-    href: "/search",
-    label: "Buscar livros",
-    icon: (
-      <>
-        <circle cx="10.5" cy="10.5" r="6.5" />
-        <path d="m16 16 5 5" />
-      </>
-    ),
-  },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
+  { href: "/search", label: "Buscar livros", icon: Search },
+  { href: "/library", label: "Minha biblioteca", icon: BookOpen },
 ];
 
 type AppShellProps = {
   children: ReactNode;
 };
 
-function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
+type NavigationLinksProps = {
+  onNavigate?: () => void;
+};
+
+function NavigationLinks({ onNavigate }: NavigationLinksProps) {
+  const reducedMotion = useReducedMotion();
+
   return (
-    <ul className="flex flex-col gap-1">
-      {navigationItems.map(({ href, label, icon }) => {
-        return (
+    <LayoutGroup id="primary-navigation">
+      <ul className="flex flex-col gap-2">
+        {navigationItems.map(({ href, label, icon: Icon }) => (
           <li key={href}>
             <NavLink
               to={href}
               onClick={onNavigate}
               className={({ isActive }) =>
-                `group flex min-h-11 items-center gap-3 rounded-r-field border-l-2 px-3 py-2 text-body-sm font-semibold transition-colors duration-200 ease-out motion-reduce:transition-none ${isActive ? "border-l-brand-primary bg-text-primary/8 text-text-primary" : "border-l-transparent text-text-secondary hover:bg-text-primary/4 hover:text-text-primary focus-visible:bg-text-primary/4 focus-visible:text-text-primary"}`
+                `relative isolate flex min-h-11 items-center gap-3 rounded-r-field px-3 py-2 text-body-sm font-semibold transition-colors duration-150 ease-out motion-reduce:transition-none ${isActive ? "text-brand-primary" : "text-text-secondary hover:bg-background-surface hover:text-text-primary"}`
               }
             >
               {({ isActive }) => (
                 <>
-                  <svg
+                  {isActive && (
+                    <motion.span
+                      {...{
+                        layoutId: "active-navigation-item",
+                        transition: {
+                          duration: reducedMotion ? 0 : 0.2,
+                          ease: "easeOut",
+                        },
+                      }}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-r-field border-r-[3px] border-brand-primary bg-background-surface"
+                    />
+                  )}
+                  <Icon
                     aria-hidden="true"
                     focusable="false"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={`size-5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none motion-reduce:translate-none motion-reduce:transition-none ${isActive ? "text-brand-primary" : ""}`}
-                  >
-                    {icon}
-                  </svg>
-                  <span>{label}</span>
+                    className={`relative z-10 size-5 shrink-0 ${isActive ? "text-brand-primary" : ""}`}
+                    strokeWidth={1.8}
+                  />
+                  <span className="relative z-10">{label}</span>
                 </>
               )}
             </NavLink>
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </LayoutGroup>
+  );
+}
+
+function Brand() {
+  return (
+    <Link
+      to="/dashboard"
+      className="flex flex-col font-heading text-heading-md font-semibold leading-tight tracking-tight text-brand-primary focus-visible:rounded-sm lg:text-[2.25rem]"
+    >
+      Literaria
+      <span className="font-interface text-label-sm font-normal tracking-normal text-text-muted lg:text-body-md">
+        Biblioteca Pessoal
+      </span>
+    </Link>
   );
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => api.post("/auth/logout"),
+    onSuccess: () => {
+      queryClient.clear();
+      navigate("/login", { replace: true });
+    },
+  });
+
+  function handleLogout() {
+    logoutMutation.mutate();
+  }
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -99,9 +119,9 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background-canvas text-text-primary">
-      <header className="relative z-10 border-b border-border-default bg-background-canvas">
-        <div className="mx-auto flex min-h-16 max-w-[100rem] items-center gap-4 px-4 md:px-6 lg:px-12">
+    <div className="grid min-h-dvh w-full bg-background-canvas text-text-primary lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <header className="relative z-10 border-b border-border-default bg-background-canvas lg:flex lg:min-h-dvh lg:flex-col lg:border-b-0 lg:border-r lg:px-4 lg:py-8">
+        <div className="flex min-h-16 items-center gap-4 px-4 sm:px-6 lg:mb-8 lg:min-h-0 lg:px-4">
           <button
             ref={menuButtonRef}
             type="button"
@@ -113,52 +133,50 @@ export function AppShell({ children }: AppShellProps) {
             onClick={() => setMenuOpen((isOpen) => !isOpen)}
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-field border border-border-default text-text-primary hover:bg-background-surface lg:hidden"
           >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="size-5"
-            >
-              {menuOpen ? (
-                <path d="m6 6 12 12M18 6 6 18" />
-              ) : (
-                <path d="M4 7h16M4 12h16M4 17h16" />
-              )}
-            </svg>
+            {menuOpen ? (
+              <X aria-hidden="true" className="size-5" strokeWidth={1.8} />
+            ) : (
+              <Menu aria-hidden="true" className="size-5" strokeWidth={1.8} />
+            )}
           </button>
-          <Link
-            to="/dashboard"
-            className="font-heading text-heading-md font-semibold tracking-tight"
-          >
-            Literaria
-          </Link>
-          <span className="ml-auto hidden text-label-sm text-text-muted sm:block">
-            Sua biblioteca, no seu ritmo
-          </span>
+          <Brand />
         </div>
         <nav
           id={menuId}
           aria-label="Navegação principal"
-          className={`${menuOpen ? "block" : "hidden"} border-t border-border-default bg-background-canvas px-4 py-3 md:px-6 lg:hidden`}
+          className={`${menuOpen ? "block" : "hidden"} border-t border-border-default bg-background-canvas px-4 py-3 sm:px-6 lg:flex lg:flex-1 lg:flex-col lg:border-t-0 lg:px-0 lg:py-0`}
         >
           <NavigationLinks onNavigate={closeMenu} />
+          <div className="mt-6 border-t border-border-default pt-3 lg:mt-auto">
+            <Button
+              loading={logoutMutation.isPending}
+              type="button"
+              onClick={handleLogout}
+              variant="ghost"
+              className="flex min-h-11 w-full items-center justify-between gap-3 rounded-field px-3 py-2 text-body-sm text-text-muted disabled:cursor-not-allowed cursor-pointer hover:bg-background-surface hover:border-r-3 hover:border-r-brand-primary"
+            >
+              <LogOut
+                aria-hidden="true"
+                className="size-5 shrink-0"
+                strokeWidth={1.8}
+              />
+              <span>Sair</span>
+            </Button>
+            {logoutMutation.isError && (
+              <ErrorState
+                message={logoutMutation.error.message}
+                onRetry={handleLogout}
+              />
+            )}
+          </div>
         </nav>
       </header>
 
-      <div className="grid min-h-[calc(100vh-4rem)] w-full lg:grid-cols-[12.5rem_minmax(0,1fr)]">
-        <aside className="hidden border-r border-border-default bg-background-subtle px-4 py-8 lg:block">
-          <nav aria-label="Navegação principal">
-            <NavigationLinks />
-          </nav>
-        </aside>
-        <main id="main-content" className="min-w-0">
-          <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 lg:px-12 lg:py-12">
-            {children}
-          </div>
-        </main>
-      </div>
+      <main id="main-content" className="min-w-0 bg-background-canvas">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 lg:px-12 lg:py-12">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
