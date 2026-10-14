@@ -111,6 +111,79 @@ test.describe("Login", () => {
   });
 });
 
+test.describe("Google OAuth", () => {
+  test("aponta o link para o endpoint que inicia o OAuth", async ({ page }) => {
+    await page.goto("/login");
+
+    await expect(
+      page.getByRole("link", { name: "Continuar com Google" }),
+    ).toHaveAttribute("href", `${apiUrl}/auth/google`);
+  });
+
+  test("confirma a sessão e abre o dashboard após o callback", async ({
+    page,
+  }) => {
+    let finishAuthRequest!: () => void;
+    const authRequestGate = new Promise<void>((resolve) => {
+      finishAuthRequest = resolve;
+    });
+
+    await page.route(`${apiUrl}/auth/me`, async (route) => {
+      expect(route.request().method()).toBe("GET");
+      await authRequestGate;
+      await route.fulfill({ status: 200, json: publicUser });
+    });
+
+    await page.goto("/auth/google/callback");
+    await expect(
+      page.getByText("Confirmando sua sessão..."),
+    ).toBeVisible();
+
+    finishAuthRequest();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" }),
+    ).toBeVisible();
+  });
+
+  test("mostra falha e permite repetir a confirmação da sessão", async ({
+    page,
+  }) => {
+    let authAttemptCount = 0;
+
+    await page.route(`${apiUrl}/auth/me`, async (route) => {
+      authAttemptCount += 1;
+
+      if (authAttemptCount === 1) {
+        await route.fulfill({
+          status: 500,
+          json: {
+            code: "INTERNAL_ERROR",
+            message: "Falha ao confirmar sessão.",
+          },
+        });
+        return;
+      }
+
+      await route.fulfill({ status: 200, json: publicUser });
+    });
+
+    await page.goto("/auth/google/callback");
+
+    await expect(page.getByRole("alert")).toContainText(
+      "Falha ao confirmar sessão.",
+    );
+    await page.getByRole("button", { name: "Tentar novamente" }).click();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" }),
+    ).toBeVisible();
+    expect(authAttemptCount).toBeGreaterThanOrEqual(2);
+  });
+});
+
 test.describe("Cadastro", () => {
   test("mostra erros de validação nos campos antes da requisição", async ({
     page,
