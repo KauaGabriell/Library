@@ -28,7 +28,7 @@ test.describe("Shell responsivo", () => {
     await expect(navigation).toBeVisible();
     await expect(page.getByRole("banner")).toBeVisible();
     await expect(page.locator("button[aria-controls]")).toBeHidden();
-    await expect(page.getByRole("button", { name: "Sair" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Sair" })).toBeEnabled();
 
     const sidebar = await page.getByRole("banner").boundingBox();
     const content = await page.locator("#main-content").boundingBox();
@@ -53,7 +53,7 @@ test.describe("Shell responsivo", () => {
       await page.getByRole("button", { name: "Abrir menu de navegação" }).click();
 
       await expect(navigation).toBeVisible();
-      await expect(page.getByRole("button", { name: "Sair" })).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Sair" })).toBeEnabled();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
   }
