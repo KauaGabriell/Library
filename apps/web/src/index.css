@@ -36,9 +36,15 @@
     var(--color-text-primary)
   );
 
-  --color-status-want-to-read: #e4e2e2;
-  --color-status-reading: #eceff4;
-  --color-status-read: #e9fcf4;
+  --color-status-want-to-read: #d0d0d0;
+  --color-status-reading: #d0d0d0;
+  --color-status-read: #d0d0d0;
+  --color-status-want-to-read-border: #b0b5bc;
+  --color-status-want-to-read-foreground: #64748b;
+  --color-status-reading-border: #7dd3fc;
+  --color-status-reading-foreground: #0ea5e9;
+  --color-status-read-border: #6ee7b7;
+  --color-status-read-foreground: #10b981;
 
   --color-feedback-error: #ba1a1a;
   --color-feedback-success: #6ee7b7;
@@ -53,7 +59,10 @@
   --text-display--font-weight: 600;
   --text-heading-lg: 2rem;
   --text-heading-lg--line-height: 1.2;
-  --text-heading-lg--font-weight: 600;
+  --text-heading-lg--font-weight: 500;
+  --text-heading-large: 1.25rem;
+  --text-heading-large--line-height: 1.25;
+  --text-heading-large--font-weight: 400;
   --text-heading-md: 1.5rem;
   --text-heading-md--line-height: 1.2;
   --text-heading-md--font-weight: 500;
@@ -75,6 +84,13 @@
   --text-label-sm: 0.75rem;
   --text-label-sm--line-height: 1.5;
   --text-label-sm--font-weight: 600;
+  --text-metadata: 0.875rem;
+  --text-metadata--line-height: 1.5;
+  --text-metadata--font-weight: 500;
+  --text-label-caps: 0.75rem;
+  --text-label-caps--line-height: 1.25;
+  --text-label-caps--font-weight: 700;
+  --text-label-caps--letter-spacing: 0.08em;
 
   --radius-field: 0.5rem;
   --radius-card: 0.75rem;

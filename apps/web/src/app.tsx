@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { Book } from "./components/ui/Book";
 import { Button } from "./components/ui/Button";
 import { Card } from "./components/ui/Card";
 import { Dialog } from "./components/ui/Dialog";
@@ -139,6 +140,12 @@ export function App() {
           </Button>
         </div>
       </Dialog>
+      <Book
+        title="O Nome do Vento"
+        authors={["Patrick Rothfuss"]}
+        status="WANT_TO_READ"
+        addedAt="2024-01-12T00:00:00.000Z"
+      />
     </>
   );
 }
