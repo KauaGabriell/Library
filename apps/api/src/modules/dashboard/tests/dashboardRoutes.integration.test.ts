@@ -96,6 +96,55 @@ describe("GET /dashboard", () => {
       averageRating: null,
       recentEntries: [],
       readingGoal: null,
+      betterRating: null,
+    });
+  });
+
+  it("returns the highest-rated book across all entries, not only recent entries", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const { book: highestRatedBook, entry: highestRatedEntry } =
+      await createEntry(user.id, {
+        status: "READING",
+        rating: 5,
+        title: "Highest rated older book",
+      });
+    await prisma.libraryEntry.update({
+      where: { id: highestRatedEntry.id },
+      data: { updatedAt: new Date(Date.UTC(2020, 0, 1)) },
+    });
+
+    for (let index = 0; index < 3; index += 1) {
+      await createEntry(user.id, {
+        status: "READ",
+        rating: index + 2,
+        title: `Recent rated book ${index}`,
+      });
+    }
+    await createEntry(user.id, {
+      status: "READ",
+      rating: null,
+      title: "Recent unrated book",
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().recentEntries).toHaveLength(3);
+    expect(
+      response
+        .json()
+        .recentEntries.some(
+          (entry: { book: { title: string } }) =>
+            entry.book.title === highestRatedBook.title,
+        ),
+    ).toBe(false);
+    expect(response.json().betterRating).toEqual({
+      book: expect.objectContaining({ title: highestRatedBook.title }),
+      rating: 5,
     });
   });
 
@@ -139,10 +188,11 @@ describe("GET /dashboard", () => {
       totalBooks: 2,
       countsByStatus: { WANT_TO_READ: 0, READING: 0, READ: 2 },
       averageRating: null,
+      betterRating: null,
     });
   });
 
-  it("returns five most recently updated entries in descending order", async () => {
+  it("returns three most recently updated entries in descending order", async () => {
     const { user, cookie } = await authenticatedUser();
     const entries = [];
 
@@ -165,11 +215,51 @@ describe("GET /dashboard", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().recentEntries).toHaveLength(5);
+    expect(response.json().recentEntries).toHaveLength(3);
     expect(
       response.json().recentEntries.map((entry: { id: string }) => entry.id),
-    ).toEqual(entries.slice(-5).reverse().map((entry) => entry.id));
+    ).toEqual(
+      entries
+        .slice(-3)
+        .reverse()
+        .map((entry) => entry.id),
+    );
     expect(response.json().recentEntries[0].book.title).toBe("Recent book 6");
+  });
+
+  it("uses id as a deterministic tie-breaker for equally updated entries", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const equalUpdatedAt = new Date(Date.UTC(2025, 0, 1));
+    const entries = [];
+
+    for (let index = 0; index < 5; index += 1) {
+      const { entry } = await createEntry(user.id, {
+        title: `Tied recent book ${index}`,
+      });
+      entries.push(
+        await prisma.libraryEntry.update({
+          where: { id: entry.id },
+          data: { updatedAt: equalUpdatedAt },
+        }),
+      );
+    }
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/dashboard",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().recentEntries).toHaveLength(3);
+    expect(
+      response.json().recentEntries.map((entry: { id: string }) => entry.id),
+    ).toEqual(
+      entries
+        .toSorted((left, right) => left.id.localeCompare(right.id))
+        .slice(0, 3)
+        .map((entry) => entry.id),
+    );
   });
 
   it("excludes another user's entries, counts and ratings", async () => {
@@ -197,13 +287,21 @@ describe("GET /dashboard", () => {
       totalBooks: 1,
       countsByStatus: { WANT_TO_READ: 0, READING: 0, READ: 1 },
       averageRating: 3,
+      betterRating: {
+        book: { title: ownBook.title },
+        rating: 3,
+      },
     });
     expect(
-      response.json().recentEntries.map(
-        (entry: { book: { title: string } }) => entry.book.title,
-      ),
+      response
+        .json()
+        .recentEntries.map(
+          (entry: { book: { title: string } }) => entry.book.title,
+        ),
     ).toEqual([ownBook.title]);
-    expect(response.json().recentEntries[0].book.title).not.toBe(foreignBook.title);
+    expect(response.json().recentEntries[0].book.title).not.toBe(
+      foreignBook.title,
+    );
   });
 
   it("recalculates goal progress after status changes and entry deletion", async () => {

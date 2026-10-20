@@ -4,8 +4,16 @@ export const dashboardRepository = {
   getLibrarysEntries(userId: string) {
     return prisma.libraryEntry.findMany({
       where: { userId: userId },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      take: 3,
+      include: { book: true },
+    });
+  },
+
+  getBetterRating(userId: string) {
+    return prisma.libraryEntry.findFirst({
+      where: { userId, rating: { not: null } },
+      orderBy: [{ rating: "desc" }, { updatedAt: "desc" }, { id: "asc" }],
       include: { book: true },
     });
   },

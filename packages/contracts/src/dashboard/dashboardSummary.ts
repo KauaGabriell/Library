@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bookPublicResponse } from "../book/bookSchema.js";
 import { libraryEntryPublicResponseSchema } from "../libraryEntry/libraryEntry.js";
 import { readingGoalResponseSchema } from "../readingGoal/readingGoalResponse.js";
 
@@ -12,6 +13,12 @@ export const dashboardSummaryResponseSchema = z.object({
   averageRating: z.number().min(1).max(5).nullable(),
   recentEntries: libraryEntryPublicResponseSchema.array(),
   readingGoal: readingGoalResponseSchema.nullable(),
+  betterRating: z
+    .object({
+      book: bookPublicResponse,
+      rating: z.int().min(1).max(5),
+    })
+    .nullable(),
 });
 
 export type DashboardSummaryResponse = z.infer<

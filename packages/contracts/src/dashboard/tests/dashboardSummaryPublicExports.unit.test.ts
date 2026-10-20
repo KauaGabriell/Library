@@ -35,6 +35,7 @@ const emptyDashboard: DashboardSummaryResponse = {
   averageRating: null,
   recentEntries: [],
   readingGoal: null,
+  betterRating: null,
 };
 
 describe("dashboard summary public exports", () => {
@@ -53,6 +54,10 @@ describe("dashboard summary public exports", () => {
         targetBooks: 12,
         completedBooks: 1,
         progressPercent: 8,
+      },
+      betterRating: {
+        book: recentEntry.book,
+        rating: 5,
       },
     } satisfies DashboardSummaryResponse;
 
