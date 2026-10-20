@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const apiUrl = "http://127.0.0.1:3000";
 
@@ -8,6 +8,29 @@ const publicUser = {
   name: "Leitor",
   avatarUrl: null,
 };
+
+const emptyDashboard = {
+  totalBooks: 0,
+  countsByStatus: { WANT_TO_READ: 0, READING: 0, READ: 0 },
+  averageRating: null,
+  recentEntries: [],
+  readingGoal: null,
+  betterRating: null,
+};
+
+async function mockDashboard(page: Page) {
+  await page.route(`${apiUrl}/dashboard`, async (route) => {
+    await route.fulfill({ status: 200, json: emptyDashboard });
+  });
+}
+
+async function expectDashboardLoaded(page: Page, userName: string) {
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("heading", { name: `Bem-vindo de volta, ${userName}!` }),
+  ).toBeVisible();
+}
 
 test.describe("Login", () => {
   test("alterna visibilidade da senha com teclado e clique", async ({
@@ -65,6 +88,7 @@ test.describe("Login", () => {
     await page.route(`${apiUrl}/auth/me`, async (route) => {
       await route.fulfill({ status: 200, json: publicUser });
     });
+    await mockDashboard(page);
 
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(publicUser.email);
@@ -81,9 +105,7 @@ test.describe("Login", () => {
       password: "valid-password-123",
     });
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
+    await expectDashboardLoaded(page, publicUser.name);
   });
 
   test("mostra erro recuperável quando credenciais são inválidas", async ({
@@ -133,18 +155,15 @@ test.describe("Google OAuth", () => {
       await authRequestGate;
       await route.fulfill({ status: 200, json: publicUser });
     });
+    await mockDashboard(page);
 
     await page.goto("/auth/google/callback");
-    await expect(
-      page.getByText("Confirmando sua sessão..."),
-    ).toBeVisible();
+    await expect(page.getByText("Confirmando sua sessão...")).toBeVisible();
 
     finishAuthRequest();
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
+    await expectDashboardLoaded(page, publicUser.name);
   });
 
   test("mostra falha e permite repetir a confirmação da sessão", async ({
@@ -168,6 +187,7 @@ test.describe("Google OAuth", () => {
 
       await route.fulfill({ status: 200, json: publicUser });
     });
+    await mockDashboard(page);
 
     await page.goto("/auth/google/callback");
 
@@ -177,9 +197,7 @@ test.describe("Google OAuth", () => {
     await page.getByRole("button", { name: "Tentar novamente" }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
+    await expectDashboardLoaded(page, publicUser.name);
     expect(authAttemptCount).toBeGreaterThanOrEqual(2);
   });
 });
@@ -221,6 +239,7 @@ test.describe("Cadastro", () => {
     await page.route(`${apiUrl}/auth/me`, async (route) => {
       await route.fulfill({ status: 200, json: registeredUser });
     });
+    await mockDashboard(page);
 
     await page.goto("/register");
     await page.getByLabel("Nome (opcional)").fill(registeredUser.name);
@@ -240,9 +259,7 @@ test.describe("Cadastro", () => {
       password: "valid-password-123",
     });
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
+    await expectDashboardLoaded(page, registeredUser.name);
   });
 
   test("mostra erro do servidor e permite tentar novamente", async ({
@@ -274,6 +291,7 @@ test.describe("Cadastro", () => {
     await page.route(`${apiUrl}/auth/me`, async (route) => {
       await route.fulfill({ status: 200, json: registeredUser });
     });
+    await mockDashboard(page);
 
     await page.goto("/register");
     await page.getByLabel("E-mail").fill("existing@example.com");
@@ -289,9 +307,7 @@ test.describe("Cadastro", () => {
     await page.getByRole("button", { name: "Criar conta" }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
+    await expectDashboardLoaded(page, registeredUser.name);
     expect(registerAttempt).toBe(2);
   });
 });
@@ -323,12 +339,14 @@ test.describe("Logout", () => {
       sessionEnded = true;
       await route.fulfill({ status: 204 });
     });
+    await mockDashboard(page);
 
     await page.goto("/dashboard");
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Buscar livros" }).click();
+    await expectDashboardLoaded(page, publicUser.name);
+    await page
+      .getByRole("navigation", { name: "Navegação principal" })
+      .getByRole("link", { name: "Buscar livros" })
+      .click();
     await expect(page).toHaveURL(/\/search$/);
 
     await page.getByRole("button", { name: "Sair" }).click();

@@ -23,7 +23,9 @@ test("renders book details using the Figma heading style", async ({ page }) => {
       name: "Capa de O Nome do Vento, por Patrick Rothfuss",
     }),
   ).toBeVisible();
-  await expect(page.getByText("Quero ler", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("article").getByText("Quero ler", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Adicionado 12 jan 2024")).toBeVisible();
 
   const typography = await title.evaluate((element) => {
@@ -39,6 +41,6 @@ test("renders book details using the Figma heading style", async ({ page }) => {
 
   expect(typography.fontFamily).toContain("EB Garamond");
   expect(typography.fontSize).toBe("20px");
-  expect(typography.fontWeight).toBe("400");
+  expect(typography.fontWeight).toBe("500");
   expect(typography.lineHeight).toBe("25px");
 });
