@@ -45,6 +45,7 @@ app.register(fastifySwaggerUi, {
 app.register(cors, {
   origin: envConfig.FRONTEND_URL,
   credentials: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
 });
 
 registerErrorHandler(app);
