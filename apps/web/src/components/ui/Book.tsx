@@ -1,16 +1,16 @@
 import type { ReadingState } from "@library/contracts";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, PencilLine } from "lucide-react";
 import type { ComponentProps } from "react";
 import BookCover from "../../assets/bookCover.jpg";
 import { formatDate } from "../../lib/formatDate";
 import { ReadingStatusBadge } from "./ReadingStatusBadge";
-import { Text } from "./Text";
 
 type BookProps = Omit<ComponentProps<"article">, "children"> & {
   title: string;
   authors: readonly string[];
   status: ReadingState;
-  addedAt: string;
+  activityAt: string;
+  activityLabel: "Adicionado" | "Atualizado";
   coverUrl?: string | null;
 };
 
@@ -18,7 +18,8 @@ export function Book({
   title,
   authors,
   status,
-  addedAt,
+  activityAt,
+  activityLabel,
   coverUrl,
   className,
   ...props
@@ -29,38 +30,44 @@ export function Book({
   return (
     <article
       {...props}
-      className={`flex w-full max-w-56 flex-col gap-2 ${className ?? ""}`}
+      className={`relative aspect-2/3 w-full max-w-56 overflow-hidden rounded-card border border-border-default bg-background-surface ${className ?? ""}`}
     >
-      <div className="relative aspect-2/3 w-full overflow-hidden rounded-md bg-background-subtle">
-        <img
-          src={coverUrl || BookCover}
-          alt={`Capa de ${title}, por ${authorLabel}`}
-          className="h-full w-full object-cover"
-          onError={(event) => {
-            event.currentTarget.onerror = null;
-            event.currentTarget.src = BookCover;
-          }}
-        />
-        <ReadingStatusBadge
-          status={status}
-          className="absolute right-3 top-3"
-        />
-      </div>
+      <img
+        src={coverUrl || BookCover}
+        alt={`Capa de ${title}, por ${authorLabel}`}
+        className="absolute inset-0 h-full w-full object-cover"
+        onError={(event) => {
+          event.currentTarget.onerror = null;
+          event.currentTarget.src = BookCover;
+        }}
+      />
 
-      <div className="flex flex-col gap-1">
-        <h3 className="m-0">
-          <Text variant="headingLarge" className="line-clamp-2">
-            {title}
-          </Text>
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/90 via-black/65 to-transparent"
+      />
+
+      <ReadingStatusBadge
+        status={status}
+        className="absolute top-3 right-3 z-10"
+      />
+
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-1.5 p-4 text-white">
+        <h3 className="line-clamp-2 font-heading text-xl leading-tight font-medium drop-shadow-sm">
+          {title}
         </h3>
-        <Text variant="bodyMd" tone="secondary" className="line-clamp-1">
+        <p className="line-clamp-1 font-interface text-sm text-white/90">
           {authorLabel}
-        </Text>
-        <div className="flex items-center gap-1 text-text-muted">
-          <CirclePlus aria-hidden="true" size={16} />
-          <Text variant="metadata" tone="muted">
-            Adicionado {formatDate(addedAt)}
-          </Text>
+        </p>
+        <div className="mt-1 flex items-center gap-1.5 font-interface text-xs text-white/75">
+          {activityLabel === "Adicionado" ? (
+            <CirclePlus aria-hidden="true" size={14} />
+          ) : (
+            <PencilLine aria-hidden="true" size={14} />
+          )}
+          <span>
+            {activityLabel} {formatDate(activityAt)}
+          </span>
         </div>
       </div>
     </article>

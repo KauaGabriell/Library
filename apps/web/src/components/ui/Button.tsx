@@ -9,6 +9,8 @@ const buttonVariants = tv({
         "bg-[var(--color-brand-primary)] text-[var(--color-background-canvas)] enabled:hover:bg-[var(--color-brand-primary-hover)]",
       secondary:
         "border border-[var(--color-border-default)] bg-[var(--color-background-surface)] text-[var(--color-text-primary)] enabled:hover:border-[var(--color-brand-primary)]",
+      tertiary:
+        "bg-[var(--color-background-surface)] text-xs tracking-[0.08em] text-[var(--color-brand-primary)] enabled:hover:bg-[color-mix(in_srgb,var(--color-background-surface)_88%,var(--color-brand-primary)_12%)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-primary)]",
       ghost:
         "bg-transparent text-[var(--color-brand-primary)] enabled:hover:bg-[var(--color-background-surface)]",
       destructive:

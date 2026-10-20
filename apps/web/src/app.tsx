@@ -144,7 +144,8 @@ export function App() {
         title="O Nome do Vento"
         authors={["Patrick Rothfuss"]}
         status="WANT_TO_READ"
-        addedAt="2024-01-12T00:00:00.000Z"
+        activityAt="2024-01-12T00:00:00.000Z"
+        activityLabel="Adicionado"
       />
     </>
   );
