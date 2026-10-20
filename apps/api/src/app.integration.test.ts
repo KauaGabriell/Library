@@ -23,6 +23,23 @@ describe("application", () => {
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });
 
+  it("allows PUT in the CORS preflight for the allowed origin", async () => {
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/reading-goal",
+      headers: {
+        origin: FRONTEND_URL,
+        "access-control-request-method": "PUT",
+        "access-control-request-headers": "content-type",
+      },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe(FRONTEND_URL);
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+    expect(response.headers["access-control-allow-methods"]).toContain("PUT");
+  });
+
   it("returns API status from the health check", async () => {
     const response = await app.inject({
       method: "GET",
