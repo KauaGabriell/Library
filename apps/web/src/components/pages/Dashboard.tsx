@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import BookCover from "../../assets/bookCover.jpg";
-import { useCurrentUser } from "../../hooks/currentUser";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { fetcher } from "../../lib/api";
 import { ReadingGoalDialog } from "../dashboard/ReadingGoalDialog";
 import { Book } from "../ui/Book";
