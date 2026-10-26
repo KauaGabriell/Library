@@ -108,6 +108,56 @@ test("renders the best-rated book and rating returned by the API", async ({
   ).toBeVisible();
 });
 
+test("renders status counts and average rating returned by the dashboard API", async ({
+  page,
+}) => {
+  const dashboardWithMetrics = {
+    ...dashboardResponse,
+    totalBooks: 10,
+    countsByStatus: { WANT_TO_READ: 2, READING: 3, READ: 5 },
+    averageRating: 4.5,
+  };
+
+  await page.route(`${apiUrl}/auth/me`, async (route) => {
+    await route.fulfill({ status: 200, json: publicUser });
+  });
+  await page.route(`${apiUrl}/dashboard`, async (route) => {
+    await route.fulfill({ status: 200, json: dashboardWithMetrics });
+  });
+
+  await page.goto("/dashboard");
+
+  const summary = page.getByRole("region", { name: "Resumo da biblioteca" });
+  await expect(summary.getByText("Quero ler")).toBeVisible();
+  await expect(summary.getByText("2", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Lendo")).toBeVisible();
+  await expect(summary.getByText("3", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Lido")).toBeVisible();
+  await expect(summary.getByText("5", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Avaliação média")).toBeVisible();
+  await expect(summary.getByText("4.5", { exact: true })).toBeVisible();
+});
+
+test("shows an empty-library message with a link to book search", async ({
+  page,
+}) => {
+  await page.route(`${apiUrl}/auth/me`, async (route) => {
+    await route.fulfill({ status: 200, json: publicUser });
+  });
+  await page.route(`${apiUrl}/dashboard`, async (route) => {
+    await route.fulfill({ status: 200, json: dashboardResponse });
+  });
+
+  await page.goto("/dashboard");
+
+  await expect(
+    page.getByText("Sua biblioteca ainda está vazia."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByRole("link", { name: "Buscar livros" }),
+  ).toHaveAttribute("href", "/search");
+});
+
 test("links recent activity to the library and marks the quiz as upcoming", async ({
   page,
 }) => {
@@ -194,4 +244,52 @@ test("shows the update date for recent activity and falls back when a cover fail
       cover.evaluate((image) => (image as HTMLImageElement).naturalWidth),
     )
     .toBeGreaterThan(0);
+});
+
+test("shows a dashboard query error and retries after user action", async ({
+  page,
+}) => {
+  let dashboardCanRecover = false;
+  let dashboardRequestCount = 0;
+
+  await page.route(`${apiUrl}/auth/me`, async (route) => {
+    await route.fulfill({ status: 200, json: publicUser });
+  });
+  await page.route(`${apiUrl}/dashboard`, async (route) => {
+    dashboardRequestCount += 1;
+
+    if (dashboardCanRecover) {
+      await route.fulfill({ status: 200, json: dashboardResponse });
+      return;
+    }
+
+    await route.fulfill({
+      status: 503,
+      json: {
+        code: "SERVICE_UNAVAILABLE",
+        message: "Dashboard indisponível.",
+      },
+    });
+  });
+
+  await page.goto("/dashboard");
+
+  const error = page.getByRole("alert");
+  await expect(error).toBeVisible({ timeout: 12_000 });
+  const failedRequestCount = dashboardRequestCount;
+  expect(failedRequestCount).toBeGreaterThan(0);
+
+  dashboardCanRecover = true;
+  const retryRequest = page.waitForRequest(
+    (request) =>
+      request.url() === `${apiUrl}/dashboard` && request.method() === "GET",
+  );
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await retryRequest;
+
+  await expect(error).toHaveCount(0);
+  await expect(
+    page.getByText("Sua biblioteca ainda está vazia."),
+  ).toBeVisible();
+  await expect.poll(() => dashboardRequestCount).toBe(failedRequestCount + 1);
 });

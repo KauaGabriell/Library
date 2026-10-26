@@ -127,6 +127,25 @@ test("creates a reading goal and refreshes the dashboard cache", async ({
   await expect.poll(() => dashboard.dashboardRequestCount).toBe(2);
 });
 
+test("shows a completed current-year reading goal at 100 percent", async ({
+  page,
+}) => {
+  await mockDashboard(page, {
+    year: new Date().getFullYear(),
+    targetBooks: 12,
+    completedBooks: 12,
+    progressPercent: 100,
+  });
+
+  await page.goto("/dashboard");
+
+  await expect(page.getByText("12 de 12", { exact: true })).toBeVisible();
+  await expect(page.getByText("livros este ano")).toBeVisible();
+  await expect(
+    page.getByRole("progressbar", { name: "Progresso da meta de leitura" }),
+  ).toHaveAttribute("aria-valuenow", "100");
+});
+
 test("updates an existing reading goal and refreshes the dashboard cache", async ({
   page,
 }) => {
