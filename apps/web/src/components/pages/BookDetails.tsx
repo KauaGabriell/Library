@@ -21,7 +21,6 @@ import {
   useState,
 } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import BookCover from "../../assets/bookCover.jpg";
 import {
   useCreateLibraryNote,
   useDeleteLibraryNote,
@@ -277,14 +276,23 @@ export function BookDetails() {
           aria-label="Informações do livro"
           className="grid min-w-0 grid-cols-[minmax(7rem,9.75rem)_minmax(0,1fr)] gap-4 sm:gap-5 md:col-span-8"
         >
-          <img
-            src={book.coverUrl ?? BookCover}
-            alt={book.coverUrl ? `Capa de ${book.title}` : ""}
-            className="h-full min-h-0 w-full self-stretch rounded-sm border border-border-default/60 bg-background-surface object-cover shadow-[0_3px_9px_rgba(47,36,17,0.12)]"
-          />
+          {book.coverUrl ? (
+            <img
+              src={book.coverUrl}
+              alt={`Capa de ${book.title}`}
+              className="aspect-[2/3] w-full self-start rounded-sm border border-border-default/60 bg-background-surface object-cover shadow-[0_3px_9px_rgba(47,36,17,0.12)]"
+            />
+          ) : (
+            <div
+              role="img"
+              aria-label={`Sem capa de ${book.title}`}
+              className="flex aspect-[2/3] w-full self-start items-center justify-center rounded-sm border border-border-default/60 bg-background-surface p-3 text-center font-interface text-sm text-text-muted"
+            >
+              Sem capa
+            </div>
+          )}
 
           <div className="flex min-w-0 flex-col">
-            <div className="mb-2 h-4" aria-hidden="true" />
             <h2 className="font-heading text-[1.75rem] font-medium leading-[1.05] text-text-primary sm:text-[2rem]">
               {book.title}
             </h2>
@@ -335,6 +343,13 @@ export function BookDetails() {
               />
             </div>
           </div>
+
+          <DetailCard className="col-span-2">
+            <h2 className="font-heading text-lg leading-tight">Sinopse</h2>
+            <p className="mt-3 whitespace-pre-line font-interface text-[0.8rem] leading-[1.7] text-text-secondary sm:text-sm">
+              {plainBookDescription(book.description)}
+            </p>
+          </DetailCard>
         </section>
 
         <aside className="flex flex-col gap-4 md:col-span-4">
@@ -542,13 +557,6 @@ export function BookDetails() {
             </>
           )}
         </aside>
-
-        <DetailCard className="md:col-span-8">
-          <h2 className="font-heading text-lg leading-tight">Sinopse</h2>
-          <p className="mt-3 whitespace-pre-line font-interface text-[0.8rem] leading-[1.7] text-text-secondary sm:text-sm">
-            {plainBookDescription(book.description)}
-          </p>
-        </DetailCard>
 
         <section aria-labelledby="notes-heading" className="md:col-span-8">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
