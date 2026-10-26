@@ -6,6 +6,7 @@ import { LibraryEntryActions } from "./LibraryEntryActions";
 
 type LibraryEntryCardProps = {
   entry: LibraryEntryPublicResponse;
+  onOpen: () => void;
 };
 
 const ratingStars = [1, 2, 3, 4, 5] as const;
@@ -21,7 +22,9 @@ function RatingStars({ rating }: { rating: number | null }) {
     <div className="flex items-center gap-2">
       <span
         role="img"
-        aria-label={rating === null ? "Sem avaliação" : `Avaliação ${rating} de 5`}
+        aria-label={
+          rating === null ? "Sem avaliação" : `Avaliação ${rating} de 5`
+        }
         className="inline-flex items-center gap-0.5 text-brand-primary"
       >
         {ratingStars.map((star) => (
@@ -47,7 +50,7 @@ function RatingStars({ rating }: { rating: number | null }) {
   );
 }
 
-export function LibraryEntryCard({ entry }: LibraryEntryCardProps) {
+export function LibraryEntryCard({ entry, onOpen }: LibraryEntryCardProps) {
   const authors = entry.book.authors?.length
     ? entry.book.authors.join(", ")
     : "Autor desconhecido";
@@ -57,7 +60,12 @@ export function LibraryEntryCard({ entry }: LibraryEntryCardProps) {
       aria-label={entry.book.title}
       className="mx-auto flex w-full max-w-72 min-w-0 flex-col overflow-hidden rounded-card border border-border-default/70 bg-background-canvas shadow-[0_4px_14px_rgba(47,36,17,0.10)] transition-shadow duration-200 hover:shadow-[0_12px_24px_rgba(47,36,17,0.14)] motion-reduce:transition-none"
     >
-      <div className="group relative h-52 overflow-hidden bg-background-surface sm:h-56">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Ver detalhes de ${entry.book.title}`}
+        className="group relative h-52 overflow-hidden bg-background-surface text-left sm:h-56"
+      >
         <img
           src={entry.book.coverUrl ?? BookCover}
           alt={entry.book.coverUrl ? `Capa de ${entry.book.title}` : ""}
@@ -82,7 +90,7 @@ export function LibraryEntryCard({ entry }: LibraryEntryCardProps) {
             {authors}
           </p>
         </div>
-      </div>
+      </button>
 
       <div className="flex flex-1 flex-col p-3">
         <div className="mt-1">
@@ -90,7 +98,9 @@ export function LibraryEntryCard({ entry }: LibraryEntryCardProps) {
         </div>
         <p className="mt-1 font-interface text-[0.7rem] text-text-muted">
           Atualizado{" "}
-          <time dateTime={entry.updatedAt}>{formatUpdatedAt(entry.updatedAt)}</time>
+          <time dateTime={entry.updatedAt}>
+            {formatUpdatedAt(entry.updatedAt)}
+          </time>
         </p>
         <div className="my-3 h-px bg-border-default/60" />
         <LibraryEntryActions entry={entry} variant="table" />

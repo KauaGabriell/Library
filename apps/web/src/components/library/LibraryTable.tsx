@@ -1,5 +1,6 @@
 import type { LibraryEntryPublicResponse } from "@library/contracts";
 import { Star } from "lucide-react";
+import { Link } from "react-router";
 import BookCover from "../../assets/bookCover.jpg";
 import { ReadingStatusBadge } from "../ui/ReadingStatusBadge";
 import { LibraryEntryActions } from "./LibraryEntryActions";
@@ -108,9 +109,12 @@ export function LibraryTable({ items }: LibraryTableProps) {
                       loading="lazy"
                     />
                     <div className="min-w-0">
-                      <p className="line-clamp-1 font-heading text-base font-medium leading-tight text-text-primary">
+                      <Link
+                        to={`/library/${encodeURIComponent(entry.id)}`}
+                        className="line-clamp-1 font-heading text-base font-medium leading-tight text-text-primary hover:text-brand-primary focus-visible:rounded-sm"
+                      >
                         {entry.book.title}
-                      </p>
+                      </Link>
                       <p className="mt-1 line-clamp-1 font-interface text-body-sm text-text-secondary">
                         {authors}
                       </p>

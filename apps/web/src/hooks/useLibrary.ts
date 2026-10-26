@@ -6,14 +6,19 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addLibraryEntry,
+  createLibraryNote,
   deleteLibraryEntry,
+  deleteLibraryNote,
   getLibraryEntries,
+  getLibraryEntryDetails,
   updateLibraryEntry,
+  updateLibraryNote,
 } from "../lib/libraryApi";
 
 export const libraryQueryKeys = {
   all: ["library"] as const,
   list: (query: LibraryEntryListQuery) => ["library", "list", query] as const,
+  detail: (id: string) => ["library", "detail", id] as const,
 };
 
 export function useLibraryEntries(
@@ -30,12 +35,23 @@ export function useLibraryEntries(
   });
 }
 
+export function useLibraryEntryDetails(id: string) {
+  return useQuery({
+    queryKey: libraryQueryKeys.detail(id),
+    queryFn: ({ signal }) => getLibraryEntryDetails(id, signal),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
 function useInvalidateLibraryData() {
   const queryClient = useQueryClient();
 
-  return () => {
-    void queryClient.invalidateQueries({ queryKey: libraryQueryKeys.all });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  return async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: libraryQueryKeys.all }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+    ]);
   };
 }
 
@@ -68,6 +84,34 @@ export function useDeleteLibraryEntry() {
 
   return useMutation({
     mutationFn: (id: string) => deleteLibraryEntry(id),
+    onSuccess: invalidateLibraryData,
+  });
+}
+
+export function useCreateLibraryNote(libraryId: string) {
+  const invalidateLibraryData = useInvalidateLibraryData();
+
+  return useMutation({
+    mutationFn: (content: string) => createLibraryNote(libraryId, content),
+    onSuccess: invalidateLibraryData,
+  });
+}
+
+export function useUpdateLibraryNote() {
+  const invalidateLibraryData = useInvalidateLibraryData();
+
+  return useMutation({
+    mutationFn: ({ noteId, content }: { noteId: string; content: string }) =>
+      updateLibraryNote(noteId, content),
+    onSuccess: invalidateLibraryData,
+  });
+}
+
+export function useDeleteLibraryNote() {
+  const invalidateLibraryData = useInvalidateLibraryData();
+
+  return useMutation({
+    mutationFn: (noteId: string) => deleteLibraryNote(noteId),
     onSuccess: invalidateLibraryData,
   });
 }

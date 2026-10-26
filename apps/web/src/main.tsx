@@ -6,6 +6,7 @@ import { BrowserRouter, Outlet, Route, Routes } from "react-router";
 import { App } from "./app.tsx";
 import { AppShell } from "./components/layout/AppShell.tsx";
 import { AuthLayout } from "./components/layout/AuthLayout.tsx";
+import { BookDetails } from "./components/pages/BookDetails.tsx";
 import { Dashboard } from "./components/pages/Dashboard.tsx";
 import { GoogleOAuthCallback } from "./components/pages/GoogleOAuthCallback.tsx";
 import { Library } from "./components/pages/Library.tsx";
@@ -43,6 +44,7 @@ createRoot(document.getElementById("root")!).render(
             <Route element={<RequireUser />}>
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="library" element={<Library />} />
+              <Route path="library/:libraryId" element={<BookDetails />} />
               <Route path="search" element={<Search />} />
             </Route>
           </Route>

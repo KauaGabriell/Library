@@ -21,12 +21,14 @@ const readingStateLabels: Record<ReadingState, string> = {
 
 type LibraryEntryActionsProps = {
   entry: LibraryEntryPublicResponse;
-  variant?: "card" | "table";
+  variant?: "card" | "table" | "detail";
+  onDeleteSuccess?: () => void;
 };
 
 export function LibraryEntryActions({
   entry,
   variant = "card",
+  onDeleteSuccess,
 }: LibraryEntryActionsProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -68,28 +70,12 @@ export function LibraryEntryActions({
   return (
     <div
       className={
-        variant === "table"
+        variant !== "card"
           ? "flex items-center justify-end gap-1"
           : "flex min-w-36 flex-col gap-2"
       }
     >
-      {variant === "table" ? (
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={isUpdating || isDeleting}
-          loading={isUpdating}
-          onClick={() => {
-            setSelectedStatus(entry.status);
-            setEditDialogOpen(true);
-          }}
-          aria-label={`Editar status de ${entry.book.title}`}
-          title="Editar status"
-          className="min-h-11 min-w-11 px-0 text-text-secondary hover:text-brand-primary"
-        >
-          <Pencil aria-hidden="true" className="size-4" />
-        </Button>
-      ) : (
+      {variant === "card" ? (
         <Select
           label={`Status de ${entry.book.title}`}
           value={entry.status}
@@ -103,6 +89,29 @@ export function LibraryEntryActions({
             </option>
           ))}
         </Select>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isUpdating || isDeleting}
+          loading={isUpdating}
+          onClick={() => {
+            setSelectedStatus(entry.status);
+            setEditDialogOpen(true);
+          }}
+          aria-label={`Editar status de ${entry.book.title}`}
+          title="Editar status"
+          className={
+            variant === "detail"
+              ? "min-h-9 rounded-field border border-border-default px-3 text-xs text-text-primary hover:bg-background-surface hover:text-brand-primary"
+              : "min-h-11 min-w-11 px-0 text-text-secondary hover:text-brand-primary"
+          }
+        >
+          <Pencil aria-hidden="true" className="size-4" />
+          {variant === "detail" && (
+            <span className="ml-1 hidden sm:inline">Editar estado</span>
+          )}
+        </Button>
       )}
 
       <Button
@@ -114,12 +123,12 @@ export function LibraryEntryActions({
         aria-label={`Remover ${entry.book.title} da biblioteca`}
         title="Remover livro"
         className={
-          variant === "table"
-            ? "min-h-11 min-w-11 px-0 text-feedback-error"
+          variant !== "card"
+            ? `min-h-11 min-w-11 px-0 text-feedback-error ${variant === "detail" ? "rounded-field border border-border-default/70" : ""}`
             : "min-h-10 justify-start px-2 text-feedback-error"
         }
       >
-        {variant === "table" ? (
+        {variant !== "card" ? (
           <Trash2 aria-hidden="true" className="size-4" />
         ) : (
           "Remover"
@@ -132,7 +141,7 @@ export function LibraryEntryActions({
           onRetry={() => retryUpdate()}
         />
       )}
-      {variant === "table" && (
+      {variant !== "card" && (
         <Dialog
           open={editDialogOpen}
           onClose={() => setEditDialogOpen(false)}
@@ -201,7 +210,10 @@ export function LibraryEntryActions({
               message={deleteMutation.error.message}
               onRetry={() =>
                 deleteMutation.mutate(entry.id, {
-                  onSuccess: () => setDeleteDialogOpen(false),
+                  onSuccess: () => {
+                    setDeleteDialogOpen(false);
+                    onDeleteSuccess?.();
+                  },
                 })
               }
             />
@@ -220,7 +232,10 @@ export function LibraryEntryActions({
               loading={isDeleting}
               onClick={() =>
                 deleteMutation.mutate(entry.id, {
-                  onSuccess: () => setDeleteDialogOpen(false),
+                  onSuccess: () => {
+                    setDeleteDialogOpen(false);
+                    onDeleteSuccess?.();
+                  },
                 })
               }
             >
