@@ -74,20 +74,15 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
       }
       const userId = user.id;
 
-      const { page, pageSize, status } = libraryEntryListSchema.parse(
-        request.query,
-      );
+      const query = libraryEntryListSchema.parse(request.query);
 
-      const result = await libraryService.listLibrarys({
+      const result = await libraryService.listLibraryEntries({
         userId,
-        page,
-        pageSize,
-        status,
+        ...query,
       });
       const publicResult = libraryEntryListResponseSchema.parse({
-        items: result.map(mapLibraryEntryToPublicResponse),
-        page,
-        pageSize,
+        ...result,
+        items: result.items.map(mapLibraryEntryToPublicResponse),
       });
 
       return reply.status(200).send(publicResult);

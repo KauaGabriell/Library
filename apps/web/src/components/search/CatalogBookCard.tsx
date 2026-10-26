@@ -5,9 +5,19 @@ import { Button } from "../ui/Button";
 
 type CatalogBookCardProps = {
   book: BookSearchItem;
+  isAdding?: boolean;
+  isAdded?: boolean;
+  errorMessage?: string;
+  onAdd?: (book: BookSearchItem) => void;
 };
 
-export function CatalogBookCard({ book }: CatalogBookCardProps) {
+export function CatalogBookCard({
+  book,
+  isAdding = false,
+  isAdded = false,
+  errorMessage,
+  onAdd,
+}: CatalogBookCardProps) {
   const authorLabel = book.authors.length
     ? book.authors.join(", ")
     : "Autor desconhecido";
@@ -32,7 +42,11 @@ export function CatalogBookCard({ book }: CatalogBookCardProps) {
             role="img"
             className="flex aspect-3/4 w-full items-center justify-center bg-background-surface text-brand-primary"
           >
-            <BookOpen aria-hidden="true" className="size-10" strokeWidth={1.4} />
+            <BookOpen
+              aria-hidden="true"
+              className="size-10"
+              strokeWidth={1.4}
+            />
           </div>
         )}
       </div>
@@ -62,12 +76,24 @@ export function CatalogBookCard({ book }: CatalogBookCardProps) {
         <div className="mt-auto pt-5">
           <Button
             type="button"
-            disabled
+            disabled={isAdded || isAdding}
+            loading={isAdding}
+            onClick={() => onAdd?.(book)}
             className="min-h-11 w-full gap-2 rounded-field px-2 text-xs leading-tight"
           >
             <BookPlus aria-hidden="true" className="size-4 shrink-0" />
-            <span>Adicionar à biblioteca</span>
+            <span>
+              {isAdded ? "Adicionado à biblioteca" : "Adicionar à biblioteca"}
+            </span>
           </Button>
+          {errorMessage && (
+            <p
+              role="alert"
+              className="mt-2 text-center text-xs text-feedback-error"
+            >
+              {errorMessage}
+            </p>
+          )}
           <Button
             type="button"
             disabled

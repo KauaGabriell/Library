@@ -25,6 +25,7 @@ describe("library entry public exports", () => {
       status: "READING",
       page: 2,
       pageSize: 20,
+      sortBy: "updatedAt",
     } satisfies LibraryEntryListQuery;
 
     expect(libraryEntryCreateSchema.parse(createInput)).toEqual(createInput);
@@ -97,6 +98,7 @@ describe("library entry public exports", () => {
     expect(libraryEntryListSchema.parse({})).toEqual({
       page: 1,
       pageSize: 10,
+      sortBy: "updatedAt",
     });
   });
 
@@ -145,6 +147,9 @@ describe("library entry public exports", () => {
       items: [entry],
       page: 1,
       pageSize: 10,
+      totalItems: 1,
+      totalPages: 1,
+      countsByStatus: { WANT_TO_READ: 0, READING: 1, READ: 0 },
     } satisfies LibraryEntryListResponse;
 
     expect(bookPublicResponse.parse(book)).toEqual(book);

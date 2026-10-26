@@ -94,6 +94,29 @@ async function createLibraryFixture(
   return { book, entry };
 }
 
+async function createListFixture(
+  userId: string,
+  options: {
+    title: string;
+    authors?: string[];
+    status?: "WANT_TO_READ" | "READING" | "READ";
+  },
+) {
+  const book = await createBook({
+    title: options.title,
+    authors: options.authors ?? [],
+  });
+  createdBookIds.add(book.id);
+
+  const entry = await createLibraryEntry({
+    userId,
+    bookId: book.id,
+    status: options.status ?? "WANT_TO_READ",
+  });
+
+  return { book, entry };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -380,6 +403,9 @@ describe("GET /library", () => {
       ],
       page: 1,
       pageSize: 10,
+      totalItems: 1,
+      totalPages: 1,
+      countsByStatus: { WANT_TO_READ: 0, READING: 1, READ: 0 },
     });
     expect(response.json().items[0].id).not.toBe(otherFixture.entry.id);
     expect(response.json().items[0]).not.toHaveProperty("userId");
@@ -405,6 +431,11 @@ describe("GET /library", () => {
     expect(
       response.json().items.map((item: { id: string }) => item.id),
     ).toEqual([reading.entry.id]);
+    expect(response.json()).toMatchObject({
+      totalItems: 1,
+      totalPages: 1,
+      countsByStatus: { WANT_TO_READ: 1, READING: 1, READ: 1 },
+    });
     expect(
       response
         .json()
@@ -426,7 +457,13 @@ describe("GET /library", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ page: 1, pageSize: 10 });
+    expect(response.json()).toMatchObject({
+      page: 1,
+      pageSize: 10,
+      totalItems: 1,
+      totalPages: 1,
+      countsByStatus: { WANT_TO_READ: 1, READING: 0, READ: 0 },
+    });
   });
 
   it("returns the requested page and page size", async () => {
@@ -449,7 +486,13 @@ describe("GET /library", () => {
     });
 
     expect(firstPage.statusCode).toBe(200);
-    expect(firstPage.json()).toMatchObject({ page: 1, pageSize: 2 });
+    expect(firstPage.json()).toMatchObject({
+      page: 1,
+      pageSize: 2,
+      totalItems: 3,
+      totalPages: 2,
+      countsByStatus: { WANT_TO_READ: 3, READING: 0, READ: 0 },
+    });
     expect(firstPage.json().items).toHaveLength(2);
     expect(secondPage.statusCode).toBe(200);
     expect(secondPage.json()).toMatchObject({ page: 2, pageSize: 2 });
@@ -523,10 +566,164 @@ describe("GET /library", () => {
     ).toEqual([tiedLowId, tiedHighId, olderId]);
   });
 
+  it("searches title by partial case-insensitive text", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const match = await createListFixture(user.id, {
+      title: "A Clean Code Handbook",
+    });
+    await createListFixture(user.id, { title: "Domain-Driven Design" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library?q=LEAN%20cOdE",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response.json().items.map((item: { id: string }) => item.id),
+    ).toEqual([match.entry.id]);
+    expect(response.json()).toMatchObject({ totalItems: 1, totalPages: 1 });
+  });
+
+  it("keeps global status counts independent from search and status filters", async () => {
+    const { user, cookie } = await authenticatedUser();
+    await createListFixture(user.id, {
+      title: "Orbit One",
+      status: "READING",
+    });
+    await createListFixture(user.id, {
+      title: "Orbit Two",
+      status: "READING",
+    });
+    await createListFixture(user.id, {
+      title: "Unrelated reading",
+      status: "READING",
+    });
+    await createListFixture(user.id, {
+      title: "Wanted title",
+      status: "WANT_TO_READ",
+    });
+    await createListFixture(user.id, { title: "Read title", status: "READ" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library?q=orbit&status=READING&pageSize=1",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      page: 1,
+      pageSize: 1,
+      totalItems: 2,
+      totalPages: 2,
+      countsByStatus: { WANT_TO_READ: 1, READING: 3, READ: 1 },
+    });
+    expect(response.json().items).toHaveLength(1);
+  });
+
+  it("returns a stable descending createdAt order with ID tie-breaker", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const books = await Promise.all([
+      createBook({ title: `Created sort ${randomUUID()}` }),
+      createBook({ title: `Created sort ${randomUUID()}` }),
+      createBook({ title: `Created sort ${randomUUID()}` }),
+    ]);
+    books.forEach((book) => {
+      createdBookIds.add(book.id);
+    });
+
+    const olderId = "00000000-0000-4000-8000-000000000013";
+    const tiedHighId = "00000000-0000-4000-8000-000000000012";
+    const tiedLowId = "00000000-0000-4000-8000-000000000011";
+    const olderDate = new Date("2026-09-01T00:00:00.000Z");
+    const newerDate = new Date("2026-09-02T00:00:00.000Z");
+
+    await prisma.libraryEntry.createMany({
+      data: [
+        {
+          id: olderId,
+          userId: user.id,
+          bookId: books[0].id,
+          status: "READING",
+          createdAt: olderDate,
+          updatedAt: newerDate,
+        },
+        {
+          id: tiedHighId,
+          userId: user.id,
+          bookId: books[1].id,
+          status: "READING",
+          createdAt: newerDate,
+          updatedAt: olderDate,
+        },
+        {
+          id: tiedLowId,
+          userId: user.id,
+          bookId: books[2].id,
+          status: "READING",
+          createdAt: newerDate,
+          updatedAt: olderDate,
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/library?sortBy=createdAt",
+      headers: { cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response.json().items.map((item: { id: string }) => item.id),
+    ).toEqual([tiedLowId, tiedHighId, olderId]);
+  });
+
+  it("clamps an out-of-range page and returns page one for empty results", async () => {
+    const { user, cookie } = await authenticatedUser();
+    await Promise.all([
+      createListFixture(user.id, { title: "Page clamp one" }),
+      createListFixture(user.id, { title: "Page clamp two" }),
+      createListFixture(user.id, { title: "Page clamp three" }),
+    ]);
+
+    const clamped = await app.inject({
+      method: "GET",
+      url: "/library?page=9&pageSize=2",
+      headers: { cookie },
+    });
+    expect(clamped.statusCode).toBe(200);
+    expect(clamped.json()).toMatchObject({
+      page: 2,
+      totalItems: 3,
+      totalPages: 2,
+    });
+    expect(clamped.json().items).toHaveLength(1);
+
+    const empty = await app.inject({
+      method: "GET",
+      url: "/library?q=xx-no-results&page=9",
+      headers: { cookie },
+    });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json()).toMatchObject({
+      items: [],
+      page: 1,
+      totalItems: 0,
+      totalPages: 0,
+      countsByStatus: { WANT_TO_READ: 3, READING: 0, READ: 0 },
+    });
+  });
+
   it.each([
     ["invalid status", "status=INVALID"],
     ["page below minimum", "page=0"],
     ["page size above maximum", "pageSize=201"],
+    ["single-character search", "q=a"],
+    ["whitespace-only search", "q=%20%20"],
+    ["invalid sort field", "sortBy=title"],
   ])(
     "returns a validation error for %s",
     async (_description: string, query: string) => {

@@ -1,4 +1,10 @@
-import { expect, test, type Page, type Request, type Route } from "@playwright/test";
+import {
+  expect,
+  type Page,
+  type Request,
+  type Route,
+  test,
+} from "@playwright/test";
 
 const apiUrl = "http://127.0.0.1:3000";
 
@@ -68,7 +74,9 @@ test("requires two characters, debounces, sends normalized params, and renders A
   await searchInput.fill("D");
   await page.clock.runFor(350);
   await expect(
-    page.getByText("Digite pelo menos 2 caracteres para pesquisar no catálogo."),
+    page.getByText(
+      "Digite pelo menos 2 caracteres para pesquisar no catálogo.",
+    ),
   ).toBeVisible();
   expect(requests).toHaveLength(0);
 
@@ -116,7 +124,9 @@ test("explains the Google Books catalog in the initial search state", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: "Ir para minha biblioteca" }).click();
   await expect(page).toHaveURL(/\/library$/);
-  await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Minha biblioteca" }),
+  ).toBeVisible();
   expect(requests).toHaveLength(0);
 });
 
@@ -169,7 +179,9 @@ test("shows empty state when catalog returns no books", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("shows an error and retries catalog search when requested", async ({ page }) => {
+test("shows an error and retries catalog search when requested", async ({
+  page,
+}) => {
   let requestCount = 0;
 
   await mockSession(page);
@@ -295,7 +307,261 @@ test("uses nextPage and previous page navigation without fixed page numbers", as
       getSearchUrl(request).searchParams.get("q") === "Fundação" &&
       getSearchUrl(request).searchParams.get("page") === "1",
   );
-  await page.getByRole("searchbox", { name: /buscar livros/i }).fill("Fundação");
+  await page
+    .getByRole("searchbox", { name: /buscar livros/i })
+    .fill("Fundação");
   await firstPageAfterNewQuery;
   expect(requests.at(-1)?.searchParams.get("page")).toBe("1");
+});
+
+test("adds a Google Books result to the library and marks it as added", async ({
+  page,
+}) => {
+  let createBody: unknown;
+
+  await mockSession(page);
+  await mockSearch(page, async (route) => {
+    await route.fulfill({
+      status: 200,
+      json: { items: [dune], page: 1, nextPage: null },
+    });
+  });
+  await page.route(`${apiUrl}/library`, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    createBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 201,
+      json: {
+        id: "dune-entry",
+        status: "WANT_TO_READ",
+        currentPage: 0,
+        progressPercent: null,
+        rating: null,
+        review: null,
+        book: dune,
+        createdAt: "2026-01-01T12:00:00.000Z",
+        updatedAt: "2026-01-01T12:00:00.000Z",
+      },
+    });
+  });
+
+  await page.goto("/search");
+  await page.getByRole("searchbox", { name: /buscar livros/i }).fill("Duna");
+  await expect(page.getByRole("heading", { name: "Duna" })).toBeVisible();
+  await page.getByRole("button", { name: "Adicionar à biblioteca" }).click();
+
+  expect(createBody).toEqual({
+    source: "GOOGLE_BOOKS",
+    googleBooksId: dune.googleBooksId,
+  });
+  await expect(
+    page.getByRole("button", { name: "Adicionado à biblioteca" }),
+  ).toBeDisabled();
+});
+
+test("shows an added book in the library and dashboard", async ({ page }) => {
+  let bookAdded = false;
+  let libraryRequestCount = 0;
+  let dashboardRequestCount = 0;
+  const libraryEntry = {
+    id: "dune-entry",
+    status: "WANT_TO_READ",
+    currentPage: 0,
+    progressPercent: null,
+    rating: null,
+    review: null,
+    book: dune,
+    createdAt: "2026-01-01T12:00:00.000Z",
+    updatedAt: "2026-01-01T12:00:00.000Z",
+  };
+
+  await mockSession(page);
+  await mockSearch(page, async (route) => {
+    await route.fulfill({
+      status: 200,
+      json: { items: [dune], page: 1, nextPage: null },
+    });
+  });
+  await page.route(`${apiUrl}/library**`, async (route) => {
+    const method = route.request().method();
+    const url = new URL(route.request().url());
+
+    if (method === "GET" && url.pathname === "/library") {
+      libraryRequestCount += 1;
+      await route.fulfill({
+        status: 200,
+        json: {
+          items: bookAdded ? [libraryEntry] : [],
+          page: 1,
+          pageSize: 8,
+          totalItems: bookAdded ? 1 : 0,
+          totalPages: bookAdded ? 1 : 0,
+          countsByStatus: {
+            WANT_TO_READ: bookAdded ? 1 : 0,
+            READING: 0,
+            READ: 0,
+          },
+        },
+      });
+      return;
+    }
+
+    if (method === "POST" && url.pathname === "/library") {
+      bookAdded = true;
+      await route.fulfill({ status: 201, json: libraryEntry });
+      return;
+    }
+
+    await route.continue();
+  });
+  await page.route(`${apiUrl}/dashboard`, async (route) => {
+    dashboardRequestCount += 1;
+    await route.fulfill({
+      status: 200,
+      json: {
+        totalBooks: bookAdded ? 1 : 0,
+        countsByStatus: {
+          WANT_TO_READ: bookAdded ? 1 : 0,
+          READING: 0,
+          READ: 0,
+        },
+        averageRating: null,
+        recentEntries: bookAdded ? [libraryEntry] : [],
+        readingGoal: null,
+        betterRating: null,
+      },
+    });
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/library");
+  await expect(
+    page.getByRole("heading", { name: "Sua biblioteca começa com um livro" }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "Dashboard" }).click();
+  await expect(page.getByText("Sua biblioteca ainda está vazia.")).toBeVisible();
+
+  await page
+    .getByRole("navigation", { name: "Navegação principal" })
+    .getByRole("link", { name: "Buscar livros" })
+    .click();
+  await page.getByRole("searchbox", { name: /buscar livros/i }).fill("Duna");
+  await expect(page.getByRole("heading", { name: "Duna" })).toBeVisible();
+  await page.getByRole("button", { name: "Adicionar à biblioteca" }).click();
+  await expect(
+    page.getByRole("button", { name: "Adicionado à biblioteca" }),
+  ).toBeDisabled();
+
+  await page.getByRole("link", { name: "Minha biblioteca" }).click();
+  await expect(page.getByRole("rowheader", { name: /Duna/ })).toBeVisible();
+  await expect.poll(() => libraryRequestCount).toBeGreaterThan(1);
+
+  await page.getByRole("link", { name: "Dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Duna" })).toBeVisible();
+  const summary = page.getByRole("region", { name: "Resumo da biblioteca" });
+  await expect(summary.getByText("1", { exact: true })).toBeVisible();
+  await expect.poll(() => dashboardRequestCount).toBeGreaterThan(1);
+});
+
+test("offers manual book creation when the catalog has no matching result", async ({
+  page,
+}) => {
+  let createBody: Record<string, unknown> | undefined;
+
+  await mockSession(page);
+  await mockSearch(page, async (route) => {
+    await route.fulfill({
+      status: 200,
+      json: { items: [], page: 1, nextPage: null },
+    });
+  });
+  await page.route(`${apiUrl}/library`, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    createBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 201,
+      json: {
+        id: "manual-entry",
+        status: "WANT_TO_READ",
+        currentPage: 0,
+        progressPercent: null,
+        rating: null,
+        review: null,
+        book: {
+          googleBooksId: null,
+          title: "Livro independente",
+          authors: [],
+          description: null,
+          coverUrl: null,
+          language: null,
+          pageCount: null,
+        },
+        createdAt: "2026-01-01T12:00:00.000Z",
+        updatedAt: "2026-01-01T12:00:00.000Z",
+      },
+    });
+  });
+
+  await page.goto("/search");
+  await page
+    .getByRole("searchbox", { name: /buscar livros/i })
+    .fill("Livro independente");
+  await expect(
+    page.getByRole("heading", { name: "Nenhum livro encontrado" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Adicionar livro manualmente" })
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Título").fill("Livro independente");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("status")).toContainText(
+    "foi adicionado à sua biblioteca",
+  );
+  expect(createBody).toEqual({
+    source: "MANUAL",
+    title: "Livro independente",
+    authors: [],
+  });
+});
+
+test("explains that a Google book is already in the user's library on conflict", async ({
+  page,
+}) => {
+  await mockSession(page);
+  await mockSearch(page, async (route) => {
+    await route.fulfill({
+      status: 200,
+      json: { items: [dune], page: 1, nextPage: null },
+    });
+  });
+  await page.route(`${apiUrl}/library`, async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 409,
+        json: { code: "CONFLICT", message: "Entrada já existente" },
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/search");
+  await page.getByRole("searchbox", { name: /buscar livros/i }).fill("Duna");
+  await page.getByRole("button", { name: "Adicionar à biblioteca" }).click();
+  await expect(
+    page.getByText("Este livro já está na sua biblioteca."),
+  ).toBeVisible();
 });

@@ -24,9 +24,11 @@ export const libraryEntryCreateSchema = z.discriminatedUnion("source", [
 ]);
 
 export const libraryEntryListSchema = z.object({
+  q: z.string().trim().min(2).optional(),
   status: readingStateSchema.optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(10),
+  sortBy: z.enum(["updatedAt", "createdAt"]).default("updatedAt"),
 });
 
 export const libraryEntryUpdateSchema = z.object({
@@ -68,6 +70,13 @@ export const libraryEntryListResponseSchema = z.object({
   items: libraryEntryPublicResponseSchema.array(),
   page: z.int().min(1),
   pageSize: z.int().min(1).max(200),
+  totalItems: z.int().min(0),
+  totalPages: z.int().min(0),
+  countsByStatus: z.object({
+    WANT_TO_READ: z.int().min(0),
+    READING: z.int().min(0),
+    READ: z.int().min(0),
+  }),
 });
 
 export const libraryEntryQuerySchema = z.object({
