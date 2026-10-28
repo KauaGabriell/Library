@@ -23,6 +23,8 @@ export function App() {
           </p>
           <h1
             id="welcome-title"
+            data-route-focus="/"
+            tabIndex={-1}
             className="font-heading text-heading-lg font-semibold leading-tight md:text-display"
           >
             Uma biblioteca feita para acompanhar suas histórias.

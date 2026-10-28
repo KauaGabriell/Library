@@ -97,7 +97,7 @@ export function Register() {
               aria-label="Alternar visibilidade da senha"
               aria-pressed={showPassword}
               onClick={() => setShowPassword((visible) => !visible)}
-              className="absolute top-1/2 right-0 flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-text-muted transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none"
+              className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-text-muted transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none"
             >
               {showPassword ? (
                 <EyeOff aria-hidden="true" size={16} strokeWidth={1.8} />

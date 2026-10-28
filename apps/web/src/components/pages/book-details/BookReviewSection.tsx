@@ -1,8 +1,9 @@
 import type { LibraryEntryDetailsPublicResponse } from "@library/contracts";
-import { Star } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { Check, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useUpdateLibraryEntry } from "../../../hooks/useLibrary";
 import { Button } from "../../ui/Button";
+import { Dialog } from "../../ui/Dialog";
 import { BookDetailsCard } from "./BookDetailsCard";
 
 type BookReviewSectionProps = {
@@ -15,26 +16,72 @@ export function BookReviewSection({ entry }: BookReviewSectionProps) {
   const ratingMutation = useUpdateLibraryEntry();
   const reviewMutation = useUpdateLibraryEntry();
   const [reviewDraft, setReviewDraft] = useState(entry.review ?? "");
+  const [isEditingReview, setIsEditingReview] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [reviewStatusMessage, setReviewStatusMessage] = useState("");
   const [ratingStatusMessage, setRatingStatusMessage] = useState("");
+  const reviewActionRef = useRef<HTMLButtonElement>(null);
+  const reviewInputRef = useRef<HTMLTextAreaElement>(null);
+  const wasEditingReviewRef = useRef(false);
 
   useEffect(() => {
     setReviewDraft(entry.review ?? "");
   }, [entry.review]);
 
+  useEffect(() => {
+    if (isEditingReview) {
+      reviewInputRef.current?.focus();
+    } else if (wasEditingReviewRef.current) {
+      reviewActionRef.current?.focus();
+    }
+
+    wasEditingReviewRef.current = isEditingReview;
+  }, [isEditingReview]);
+
+  function openReviewEditor() {
+    reviewMutation.reset();
+    setReviewStatusMessage("");
+    setReviewDraft(entry.review ?? "");
+    setIsEditingReview(true);
+  }
+
+  function cancelReviewEditor() {
+    setReviewDraft(entry.review ?? "");
+    reviewMutation.reset();
+    setIsEditingReview(false);
+  }
+
   function saveReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (entry.status !== "READ") return;
+    const review = reviewDraft.trim();
+
+    if (entry.status !== "READ" || !review) return;
 
     setReviewStatusMessage("");
-    const review = reviewDraft.trim();
     reviewMutation.mutate(
+      { id: entry.id, patch: { review } },
       {
-        id: entry.id,
-        patch: { review: review || null },
+        onSuccess: () => {
+          setReviewDraft(review);
+          setReviewStatusMessage("Resenha salva.");
+          setIsEditingReview(false);
+        },
       },
+    );
+  }
+
+  function deleteReview() {
+    if (!entry.review || entry.status !== "READ") return;
+
+    reviewMutation.mutate(
+      { id: entry.id, patch: { review: null } },
       {
-        onSuccess: () => setReviewStatusMessage("Resenha salva."),
+        onSuccess: () => {
+          setReviewDraft("");
+          setReviewStatusMessage("Resenha excluída.");
+          setIsDeleteDialogOpen(false);
+          window.requestAnimationFrame(() => reviewActionRef.current?.focus());
+        },
       },
     );
   }
@@ -58,7 +105,7 @@ export function BookReviewSection({ entry }: BookReviewSectionProps) {
             <button
               key={star}
               type="button"
-              aria-label={`${star} ${star === 1 ? "estrela" : "estrelas"}`}
+              aria-label={star + (star === 1 ? " estrela" : " estrelas")}
               aria-pressed={entry.rating === star}
               disabled={ratingMutation.isPending}
               onClick={() => {
@@ -101,41 +148,152 @@ export function BookReviewSection({ entry }: BookReviewSectionProps) {
       </BookDetailsCard>
 
       <BookDetailsCard>
-        <h2 className="font-heading text-lg leading-tight">Sua resenha</h2>
-        <form onSubmit={saveReview} className="mt-3 flex flex-col gap-3">
-          <label htmlFor="book-review" className="sr-only">
-            Resenha do livro
-          </label>
-          <textarea
-            id="book-review"
-            value={reviewDraft}
-            onChange={(event) => setReviewDraft(event.target.value)}
-            rows={4}
-            className="w-full resize-y rounded-field border border-border-control bg-background-canvas px-3 py-2.5 text-sm text-text-primary focus-visible:outline-brand-primary"
-            placeholder="O que você achou deste livro?"
-          />
-          {reviewMutation.isError && (
-            <p role="alert" className="text-sm text-feedback-error">
-              Não foi possível salvar sua resenha.
-            </p>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="font-heading text-lg leading-tight">Sua resenha</h2>
+          {!isEditingReview && entry.review && (
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                ref={reviewActionRef}
+                type="button"
+                variant="ghost"
+                aria-label="Editar resenha"
+                title="Editar resenha"
+                onClick={openReviewEditor}
+                className="size-11 min-h-11 p-0 text-text-secondary hover:text-brand-primary"
+              >
+                <Pencil aria-hidden="true" className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                aria-label="Excluir resenha"
+                title="Excluir resenha"
+                onClick={() => {
+                  reviewMutation.reset();
+                  setIsDeleteDialogOpen(true);
+                }}
+                className="size-11 min-h-11 p-0 text-text-secondary hover:text-feedback-error"
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+              </Button>
+            </div>
           )}
+        </div>
+
+        {isEditingReview ? (
+          <form onSubmit={saveReview} className="mt-3 flex flex-col gap-3">
+            <label
+              htmlFor="book-review"
+              className="font-interface text-sm font-semibold text-text-primary"
+            >
+              Resenha do livro
+            </label>
+            <textarea
+              id="book-review"
+              ref={reviewInputRef}
+              value={reviewDraft}
+              onChange={(event) => setReviewDraft(event.target.value)}
+              rows={4}
+              className="w-full resize-y rounded-field border border-border-control bg-background-canvas px-3 py-2.5 text-sm text-text-primary focus-visible:outline-brand-primary"
+              placeholder="O que você achou deste livro?"
+            />
+            {reviewMutation.isError && (
+              <p role="alert" className="text-sm text-feedback-error">
+                {reviewMutation.error.message ||
+                  "Não foi possível salvar sua resenha. Tente novamente."}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-default/60 pt-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={reviewMutation.isPending}
+                onClick={cancelReviewEditor}
+              >
+                <X aria-hidden="true" className="size-4" />
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                loading={reviewMutation.isPending}
+                disabled={
+                  !reviewDraft.trim() ||
+                  (!reviewMutation.isError &&
+                    reviewDraft.trim() === (entry.review ?? ""))
+                }
+              >
+                <Check aria-hidden="true" className="size-4" />
+                Salvar resenha
+              </Button>
+            </div>
+          </form>
+        ) : entry.review ? (
+          <p className="mt-3 whitespace-pre-wrap font-interface text-sm leading-relaxed text-text-secondary">
+            {entry.review}
+          </p>
+        ) : (
+          <div className="mt-3">
+            <p className="font-interface text-sm text-text-secondary">
+              Nenhuma resenha salva.
+            </p>
+            <Button
+              ref={reviewActionRef}
+              type="button"
+              variant="secondary"
+              onClick={openReviewEditor}
+              className="mt-3"
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Escrever resenha
+            </Button>
+          </div>
+        )}
+
+        {!isEditingReview && (
           <p role="status" aria-live="polite" className="sr-only">
             {reviewStatusMessage}
           </p>
-          <div className="flex justify-end">
+        )}
+      </BookDetailsCard>
+
+      <Dialog
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        title="Excluir resenha?"
+        size="compact"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="whitespace-pre-wrap text-sm text-text-secondary">
+            Esta ação removerá sua resenha salva. A avaliação em estrelas será
+            mantida.
+          </p>
+          {reviewMutation.isError && (
+            <p role="alert" className="text-sm text-feedback-error">
+              {reviewMutation.error.message ||
+                "Não foi possível excluir sua resenha. Tente novamente."}
+            </p>
+          )}
+          <div className="flex justify-end gap-2 border-t border-border-default/60 pt-4">
             <Button
-              type="submit"
-              loading={reviewMutation.isPending}
-              disabled={
-                reviewDraft.trim() === (entry.review ?? "") &&
-                !reviewMutation.isError
-              }
+              type="button"
+              variant="secondary"
+              disabled={reviewMutation.isPending}
+              onClick={() => setIsDeleteDialogOpen(false)}
             >
-              Salvar resenha
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              loading={reviewMutation.isPending}
+              onClick={deleteReview}
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+              Excluir resenha
             </Button>
           </div>
-        </form>
-      </BookDetailsCard>
+        </div>
+      </Dialog>
     </>
   );
 }

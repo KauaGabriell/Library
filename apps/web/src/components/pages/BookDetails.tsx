@@ -36,6 +36,8 @@ export function BookDetails() {
         <div className="mx-auto max-w-3xl">
           <Link
             to="/library"
+            data-route-focus={`/library/${libraryId}`}
+            tabIndex={-1}
             className="mb-6 inline-flex min-h-11 items-center gap-2 text-body-sm text-text-secondary hover:text-text-primary"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
@@ -72,7 +74,7 @@ export function BookDetails() {
         <span aria-hidden="true" />
       </header>
 
-      <div className="grid gap-x-4 gap-y-5 md:grid-cols-12">
+      <div className="grid gap-x-4 gap-y-4 md:grid-cols-12">
         <BookOverview
           entry={entry}
           onDeleteSuccess={() => navigate("/library", { replace: true })}

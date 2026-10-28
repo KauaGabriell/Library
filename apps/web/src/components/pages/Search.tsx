@@ -40,7 +40,7 @@ function SearchField({ value, onQueryChange, onSearch }: SearchFieldProps) {
           event.preventDefault();
           onSearch();
         }}
-        className="flex min-h-12 max-w-3xl items-center gap-3 rounded-full border border-border-default/60 bg-background-surface px-4 shadow-[0_1px_3px_rgba(47,36,17,0.04)] transition-shadow focus-within:border-brand-primary/50 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand-primary)_12%,transparent)]"
+        className="flex min-h-12 max-w-3xl items-center gap-3 rounded-full border border-border-control bg-background-surface px-4 shadow-[0_1px_3px_rgba(47,36,17,0.04)] transition-shadow focus-within:border-brand-primary/50 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand-primary)_12%,transparent)]"
       >
         <label htmlFor="catalog-search" className="sr-only">
           Buscar livros por título ou autor
@@ -61,7 +61,7 @@ function SearchField({ value, onQueryChange, onSearch }: SearchFieldProps) {
           type="submit"
           aria-label="Pesquisar no catálogo"
           disabled={value.trim().length < 2}
-          className="size-9 min-h-9 shrink-0 rounded-full p-0"
+          className="size-11 min-h-11 shrink-0 rounded-full p-0"
         >
           <ArrowRight aria-hidden="true" className="size-4" />
         </Button>
@@ -89,7 +89,7 @@ function ResultsToolbar({ resultCount }: { resultCount: number }) {
           id="catalog-sort"
           disabled
           defaultValue="relevance"
-          className="min-h-10 rounded-field border border-border-default/70 bg-background-canvas px-3 font-interface text-xs text-text-primary disabled:cursor-not-allowed disabled:opacity-80"
+          className="min-h-11 rounded-field border border-border-control bg-background-canvas px-3 font-interface text-xs text-text-primary disabled:cursor-not-allowed disabled:opacity-80"
         >
           <option value="relevance">Mais relevantes</option>
         </select>
@@ -102,7 +102,7 @@ function ResultsToolbar({ resultCount }: { resultCount: number }) {
             aria-pressed="true"
             disabled
             variant="secondary"
-            className="size-10 min-h-10 rounded-field border-brand-primary/30 bg-brand-primary/5 p-0 text-brand-primary"
+            className="size-11 min-h-11 rounded-field border-brand-primary/30 bg-brand-primary/5 p-0 text-brand-primary"
           >
             <Grid2X2 aria-hidden="true" className="size-4" />
           </Button>
@@ -111,7 +111,7 @@ function ResultsToolbar({ resultCount }: { resultCount: number }) {
             aria-pressed="false"
             disabled
             variant="secondary"
-            className="size-10 min-h-10 rounded-field p-0"
+            className="size-11 min-h-11 rounded-field p-0"
           >
             <List aria-hidden="true" className="size-4" />
           </Button>
@@ -150,7 +150,7 @@ function SearchPagination({
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
           variant="secondary"
-          className="size-9 min-h-9 rounded-field p-0"
+          className="size-11 min-h-11 rounded-field p-0"
         >
           <ArrowLeft aria-hidden="true" className="size-4" />
         </Button>
@@ -167,7 +167,7 @@ function SearchPagination({
             if (nextPage !== null) onPageChange(nextPage);
           }}
           variant="secondary"
-          className="size-9 min-h-9 rounded-field p-0"
+          className="size-11 min-h-11 rounded-field p-0"
         >
           <ArrowRight aria-hidden="true" className="size-4" />
         </Button>
@@ -319,7 +319,11 @@ export function Search() {
           <p className="mb-2 font-interface text-label-caps uppercase text-brand-primary">
             Catálogo e descobertas
           </p>
-          <h1 className="font-heading text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-text-primary sm:text-[2.5rem]">
+          <h1
+            data-route-focus="/search"
+            tabIndex={-1}
+            className="font-heading text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-text-primary sm:text-[2.5rem]"
+          >
             Descubra novas histórias
           </h1>
           <p className="mt-2 font-interface text-sm text-text-secondary sm:text-base">

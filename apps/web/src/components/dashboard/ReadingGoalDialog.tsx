@@ -14,12 +14,14 @@ type ReadingGoalDialogProps = {
   trigger: ReactElement;
   mode?: "create" | "edit";
   initialTargetBooks?: number;
+  onMutationSuccess?: (action: "saved" | "deleted") => void;
 };
 
 export function ReadingGoalDialog({
   trigger,
   mode = "create",
   initialTargetBooks = 1,
+  onMutationSuccess,
 }: ReadingGoalDialogProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -45,6 +47,7 @@ export function ReadingGoalDialog({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
+      onMutationSuccess?.("saved");
     },
   });
 
@@ -56,6 +59,7 @@ export function ReadingGoalDialog({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
+      onMutationSuccess?.("deleted");
     },
   });
 

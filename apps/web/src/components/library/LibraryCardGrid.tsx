@@ -5,9 +5,14 @@ import { LibraryEntryCard } from "./LibraryEntryCard";
 type LibraryCardGridProps = {
   items: LibraryEntryPublicResponse[];
   className?: string;
+  onDeleteSuccess: (bookTitle: string) => void;
 };
 
-export function LibraryCardGrid({ items, className }: LibraryCardGridProps) {
+export function LibraryCardGrid({
+  items,
+  className,
+  onDeleteSuccess,
+}: LibraryCardGridProps) {
   const navigate = useNavigate();
 
   return (
@@ -19,6 +24,7 @@ export function LibraryCardGrid({ items, className }: LibraryCardGridProps) {
           key={entry.id}
           entry={entry}
           onOpen={() => navigate(`/library/${encodeURIComponent(entry.id)}`)}
+          onDeleteSuccess={onDeleteSuccess}
         />
       ))}
     </div>

@@ -49,6 +49,7 @@ export function Book({
 
       <ReadingStatusBadge
         status={status}
+        appearance="default"
         className="absolute top-3 right-3 z-10"
       />
 

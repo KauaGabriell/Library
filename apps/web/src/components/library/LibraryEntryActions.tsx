@@ -22,7 +22,7 @@ const readingStateLabels: Record<ReadingState, string> = {
 type LibraryEntryActionsProps = {
   entry: LibraryEntryPublicResponse;
   variant?: "card" | "table" | "detail";
-  onDeleteSuccess?: () => void;
+  onDeleteSuccess: (bookTitle: string) => void;
 };
 
 export function LibraryEntryActions({
@@ -67,6 +67,11 @@ export function LibraryEntryActions({
     updateMutation.mutate(failedUpdate, { onSuccess });
   }
 
+  function handleDeleteSuccess() {
+    setDeleteDialogOpen(false);
+    onDeleteSuccess(entry.book.title);
+  }
+
   return (
     <div
       className={
@@ -81,7 +86,7 @@ export function LibraryEntryActions({
           value={entry.status}
           disabled={isUpdating || isDeleting}
           onChange={(event) => updateStatus(event.target.value as ReadingState)}
-          className="min-h-10 px-2 py-1 text-sm"
+          className="min-h-11 px-2 py-1 text-sm"
         >
           {Object.entries(readingStateLabels).map(([value, label]) => (
             <option key={value} value={value}>
@@ -103,7 +108,7 @@ export function LibraryEntryActions({
           title="Editar status"
           className={
             variant === "detail"
-              ? "min-h-9 rounded-field border border-border-default px-3 text-xs text-text-primary hover:bg-background-surface hover:text-brand-primary"
+              ? "min-h-11 min-w-11 rounded-field border border-border-control px-3 text-xs text-text-primary hover:bg-background-surface hover:text-brand-primary"
               : "min-h-11 min-w-11 px-0 text-text-secondary hover:text-brand-primary"
           }
         >
@@ -125,7 +130,7 @@ export function LibraryEntryActions({
         className={
           variant !== "card"
             ? `min-h-11 min-w-11 px-0 text-feedback-error ${variant === "detail" ? "rounded-field border border-border-default/70" : ""}`
-            : "min-h-10 justify-start px-2 text-feedback-error"
+            : "min-h-11 justify-start px-2 text-feedback-error"
         }
       >
         {variant !== "card" ? (
@@ -159,7 +164,7 @@ export function LibraryEntryActions({
               onChange={(event) =>
                 setSelectedStatus(event.target.value as ReadingState)
               }
-              className="rounded-field border border-border-default bg-background-canvas px-3"
+              className="rounded-field border border-border-control bg-background-canvas px-3"
             >
               {Object.entries(readingStateLabels).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -210,10 +215,7 @@ export function LibraryEntryActions({
               message={deleteMutation.error.message}
               onRetry={() =>
                 deleteMutation.mutate(entry.id, {
-                  onSuccess: () => {
-                    setDeleteDialogOpen(false);
-                    onDeleteSuccess?.();
-                  },
+                  onSuccess: handleDeleteSuccess,
                 })
               }
             />
@@ -232,10 +234,7 @@ export function LibraryEntryActions({
               loading={isDeleting}
               onClick={() =>
                 deleteMutation.mutate(entry.id, {
-                  onSuccess: () => {
-                    setDeleteDialogOpen(false);
-                    onDeleteSuccess?.();
-                  },
+                  onSuccess: handleDeleteSuccess,
                 })
               }
             >

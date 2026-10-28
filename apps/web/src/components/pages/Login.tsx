@@ -81,7 +81,7 @@ export function Login() {
             aria-label="Alternar visibilidade da senha"
             aria-pressed={showPassword}
             onClick={() => setShowPassword((visible) => !visible)}
-            className="absolute top-1/2 right-0 flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-text-muted transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none"
+            className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-text-muted transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none"
           >
             {showPassword ? (
               <EyeOff aria-hidden="true" size={16} strokeWidth={1.8} />
@@ -107,11 +107,11 @@ export function Login() {
           <input
             type="checkbox"
             name="remember"
-            className="size-3.5 rounded border border-border-default accent-(--color-brand-primary)"
+            className="size-3.5 rounded border border-border-control accent-brand-primary"
           />
           Lembrar-me
         </label>
-        <span className="text-(--color-brand-primary)">Esqueci a senha</span>
+        <span className="text-brand-primary">Esqueci a senha</span>
       </div>
 
       <Button

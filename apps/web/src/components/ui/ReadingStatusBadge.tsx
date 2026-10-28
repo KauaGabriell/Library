@@ -1,19 +1,12 @@
 import type { ReadingState } from "@library/contracts";
 import type { ComponentProps } from "react";
-import { tv } from "tailwind-variants";
+import { Badge, type BadgeAppearance, BadgeDot } from "./Badge";
 
-const readingStatusBadgeVariants = tv({
-  base: "inline-flex items-center rounded-full border px-2 py-1",
-  variants: {
-    status: {
-      WANT_TO_READ:
-        "border-status-want-to-read-border bg-status-want-to-read text-status-want-to-read-foreground",
-      READING:
-        "border-status-reading-border bg-status-reading text-status-reading-foreground",
-      READ: "border-status-read-border bg-status-read text-status-read-foreground",
-    },
-  },
-});
+const statusVariants = {
+  WANT_TO_READ: "neutral",
+  READING: "info",
+  READ: "success",
+} as const;
 
 const statusLabels: Record<ReadingState, string> = {
   WANT_TO_READ: "Quero ler",
@@ -21,23 +14,34 @@ const statusLabels: Record<ReadingState, string> = {
   READ: "Lido",
 };
 
+export function getReadingStatusLabel(status: ReadingState) {
+  return statusLabels[status];
+}
+
 type ReadingStatusBadgeProps = Omit<ComponentProps<"span">, "children"> & {
   status: ReadingState;
+  appearance?: BadgeAppearance;
 };
 
 export function ReadingStatusBadge({
   status,
+  appearance = "light",
   className,
   ...props
 }: ReadingStatusBadgeProps) {
   return (
-    <span
+    <Badge
       {...props}
-      className={readingStatusBadgeVariants({ status, className })}
+      variant={statusVariants[status]}
+      appearance={appearance}
+      size="sm"
+      shape="circle"
+      className={className}
     >
+      <BadgeDot />
       <span className="font-interface text-label-caps uppercase">
-        {statusLabels[status]}
+        {getReadingStatusLabel(status)}
       </span>
-    </span>
+    </Badge>
   );
 }

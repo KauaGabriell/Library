@@ -1,19 +1,11 @@
-import type {
-  LibraryEntryDetailsPublicResponse,
-  ReadingState,
-} from "@library/contracts";
+import type { LibraryEntryDetailsPublicResponse } from "@library/contracts";
 import { LibraryEntryActions } from "../../library/LibraryEntryActions";
+import { ReadingStatusBadge } from "../../ui/ReadingStatusBadge";
 import { BookDetailsCard } from "./BookDetailsCard";
 
 type BookOverviewProps = {
   entry: LibraryEntryDetailsPublicResponse;
   onDeleteSuccess: () => void;
-};
-
-const statusLabels: Record<ReadingState, string> = {
-  WANT_TO_READ: "Quero ler",
-  READING: "Lendo",
-  READ: "Lido",
 };
 
 function formatLanguage(language: string | null) {
@@ -53,7 +45,7 @@ export function BookOverview({ entry, onDeleteSuccess }: BookOverviewProps) {
   return (
     <section
       aria-label="Informações do livro"
-      className="grid min-w-0 grid-cols-[minmax(7rem,9.75rem)_minmax(0,1fr)] gap-4 sm:gap-5 md:col-span-8"
+      className="grid min-w-0 grid-cols-[minmax(6rem,7rem)_minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(7rem,9.75rem)_minmax(0,1fr)] sm:gap-4 md:col-span-8"
     >
       {book.coverUrl ? (
         <img
@@ -79,7 +71,7 @@ export function BookOverview({ entry, onDeleteSuccess }: BookOverviewProps) {
           {authorLabel}
         </p>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border-default/45 py-3 font-interface text-xs sm:mt-5 sm:py-3.5">
+        <dl className="mt-3 grid grid-cols-1 gap-y-2 border-y border-border-default/45 py-3 font-interface text-xs sm:mt-4 sm:grid-cols-2 sm:gap-3 sm:py-3.5">
           <div>
             <dt className="font-semibold tracking-[0.04em] text-text-secondary">
               Páginas
@@ -98,22 +90,12 @@ export function BookOverview({ entry, onDeleteSuccess }: BookOverviewProps) {
           </div>
         </dl>
 
-        <div className="mt-4 flex min-h-16 items-center justify-between gap-2 rounded-field border border-border-default/45 px-3 py-2.5 sm:mt-4 sm:px-4">
+        <div className="mt-3 flex min-h-16 flex-col items-start justify-between gap-2 rounded-field border border-border-default/45 px-3 py-2.5 sm:mt-4 sm:flex-row sm:items-center sm:px-4">
           <div className="min-w-0">
             <p className="font-interface text-[0.65rem] font-semibold leading-tight tracking-[0.06em] text-text-secondary">
               Estado de leitura
             </p>
-            <span
-              className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 font-interface text-xs ${
-                entry.status === "WANT_TO_READ"
-                  ? "border-status-want-to-read-border bg-status-want-to-read text-status-want-to-read-foreground"
-                  : entry.status === "READING"
-                    ? "border-status-reading-border bg-status-reading text-status-reading-foreground"
-                    : "border-status-read-border bg-status-read text-status-read-foreground"
-              }`}
-            >
-              {statusLabels[entry.status]}
-            </span>
+            <ReadingStatusBadge status={entry.status} className="mt-1" />
           </div>
           <LibraryEntryActions
             entry={entry}

@@ -2,7 +2,7 @@ import { type ComponentProps, useId } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const inputVariants = tv({
-  base: "min-h-11 w-full border-b-2 border-b-[color:var(--color-border-default)] px-3 py-2 pr-10 text-[color:var(--color-text-primary)] placeholder:text-[color:var(--color-text-muted)] transition-colors focus-visible:border-b-[color:var(--color-brand-primary)] focus-visible:outline-none disabled:cursor-not-allowed disabled:text-[color:var(--color-text-muted)] disabled:opacity-50 motion-reduce:transition-none",
+  base: "min-h-11 w-full border-b-2 border-b-[color:var(--color-border-control)] px-3 py-2 pr-10 text-[color:var(--color-text-primary)] placeholder:text-[color:var(--color-text-muted)] transition-colors focus-visible:border-b-[color:var(--color-brand-primary)] focus-visible:outline-none disabled:cursor-not-allowed disabled:text-[color:var(--color-text-muted)] disabled:opacity-50 motion-reduce:transition-none",
   variants: {
     variant: {
       primary: "bg-[var(--color-background-surface)]",
@@ -73,7 +73,7 @@ export function Input({
         {loading && (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--color-brand-primary)"
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-primary"
           >
             <span className="block size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />
           </span>

@@ -1,12 +1,16 @@
 import type { LibraryEntryPublicResponse } from "@library/contracts";
 import { Star } from "lucide-react";
 import BookCover from "../../assets/bookCover.jpg";
-import { ReadingStatusBadge } from "../ui/ReadingStatusBadge";
+import {
+  getReadingStatusLabel,
+  ReadingStatusBadge,
+} from "../ui/ReadingStatusBadge";
 import { LibraryEntryActions } from "./LibraryEntryActions";
 
 type LibraryEntryCardProps = {
   entry: LibraryEntryPublicResponse;
   onOpen: () => void;
+  onDeleteSuccess: (bookTitle: string) => void;
 };
 
 const ratingStars = [1, 2, 3, 4, 5] as const;
@@ -50,7 +54,11 @@ function RatingStars({ rating }: { rating: number | null }) {
   );
 }
 
-export function LibraryEntryCard({ entry, onOpen }: LibraryEntryCardProps) {
+export function LibraryEntryCard({
+  entry,
+  onOpen,
+  onDeleteSuccess,
+}: LibraryEntryCardProps) {
   const authors = entry.book.authors?.length
     ? entry.book.authors.join(", ")
     : "Autor desconhecido";
@@ -63,7 +71,7 @@ export function LibraryEntryCard({ entry, onOpen }: LibraryEntryCardProps) {
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`Ver detalhes de ${entry.book.title}`}
+        aria-label={`Ver detalhes de ${entry.book.title}. Status de leitura: ${getReadingStatusLabel(entry.status)}`}
         className="group relative h-52 overflow-hidden bg-background-surface text-left sm:h-56"
       >
         <img
@@ -74,12 +82,13 @@ export function LibraryEntryCard({ entry, onOpen }: LibraryEntryCardProps) {
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"
+          className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/75 via-black/10 to-transparent"
         />
         <div className="absolute right-3 top-3">
           <ReadingStatusBadge
             status={entry.status}
-            className="border-background-canvas/40 bg-background-canvas/95 shadow-sm"
+            appearance="default"
+            className="shadow-sm"
           />
         </div>
         <div className="absolute inset-x-3 bottom-3 text-background-canvas drop-shadow-sm">
@@ -103,7 +112,11 @@ export function LibraryEntryCard({ entry, onOpen }: LibraryEntryCardProps) {
           </time>
         </p>
         <div className="my-3 h-px bg-border-default/60" />
-        <LibraryEntryActions entry={entry} variant="table" />
+        <LibraryEntryActions
+          entry={entry}
+          variant="table"
+          onDeleteSuccess={onDeleteSuccess}
+        />
       </div>
     </article>
   );

@@ -1,5 +1,5 @@
 import type { ReadingState } from "@library/contracts";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useDebouncedValue } from "../../hooks/useDebounce";
 import { useLibraryEntries } from "../../hooks/useLibrary";
@@ -27,6 +27,8 @@ export function Library() {
   const [sortBy, setSortBy] = useState<"updatedAt" | "createdAt">("updatedAt");
   const [page, setPage] = useState(1);
   const [view, setView] = useState<LibraryView>("table");
+  const [deleteStatusMessage, setDeleteStatusMessage] = useState("");
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const debouncedSearch = useDebouncedValue(search, 300).trim();
   const isSearchTooShort = debouncedSearch.length === 1;
   const query = {
@@ -59,6 +61,11 @@ export function Library() {
     setPage(1);
   }
 
+  function handleDeleteSuccess(bookTitle: string) {
+    setDeleteStatusMessage(`“${bookTitle}” foi removido da biblioteca.`);
+    window.requestAnimationFrame(() => headingRef.current?.focus());
+  }
+
   const result = libraryQuery.data;
   const hasNoLibraryEntries =
     result?.totalItems === 0 && !query.q && !query.status;
@@ -71,9 +78,17 @@ export function Library() {
           <p className="mb-2 font-interface text-label-caps uppercase text-brand-primary">
             Suas leituras
           </p>
-          <h1 className="font-heading text-[2rem] leading-tight font-semibold text-text-primary sm:text-[2.5rem]">
+          <h1
+            ref={headingRef}
+            data-route-focus="/library"
+            tabIndex={-1}
+            className="font-heading text-[2rem] leading-tight font-semibold text-text-primary sm:text-[2.5rem]"
+          >
             Minha biblioteca
           </h1>
+          <p role="status" aria-live="polite" className="sr-only">
+            {deleteStatusMessage}
+          </p>
           <p className="mt-2 font-interface text-sm text-text-secondary">
             Organize seus livros e acompanhe cada leitura.
           </p>
@@ -138,15 +153,22 @@ export function Library() {
       ) : result && result.items.length > 0 ? (
         <>
           <div className="lg:hidden">
-            <LibraryCardGrid items={result.items} />
+            <LibraryCardGrid
+              items={result.items}
+              onDeleteSuccess={handleDeleteSuccess}
+            />
           </div>
           <div className="hidden lg:block">
             {view === "table" ? (
-              <LibraryTable items={result.items} />
+              <LibraryTable
+                items={result.items}
+                onDeleteSuccess={handleDeleteSuccess}
+              />
             ) : (
               <LibraryCardGrid
                 items={result.items}
                 className="xl:grid-cols-4"
+                onDeleteSuccess={handleDeleteSuccess}
               />
             )}
           </div>

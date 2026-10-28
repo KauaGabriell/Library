@@ -84,7 +84,7 @@ export function ManualBookFormDialog({
             id="manual-book-description"
             name="description"
             rows={4}
-            className="w-full rounded-field border border-border-default bg-background-surface px-3 py-2 text-body-sm text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+            className="w-full rounded-field border border-border-control bg-background-surface px-3 py-2 text-body-sm text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           />
         </div>
         <Input label="URL da capa" name="coverUrl" type="url" />

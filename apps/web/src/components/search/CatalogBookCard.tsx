@@ -1,5 +1,6 @@
 import type { BookSearchItem } from "@library/contracts";
 import { BookOpen, BookPlus, Eye } from "lucide-react";
+import { useEffect, useRef } from "react";
 import BookCover from "../../assets/bookCover.jpg";
 import { Button } from "../ui/Button";
 
@@ -21,6 +22,23 @@ export function CatalogBookCard({
   const authorLabel = book.authors.length
     ? book.authors.join(", ")
     : "Autor desconhecido";
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreAddButtonFocus = useRef(false);
+
+  useEffect(() => {
+    if (isAdding || !restoreAddButtonFocus.current) return;
+
+    addButtonRef.current?.focus();
+    restoreAddButtonFocus.current = false;
+  }, [isAdding]);
+
+  function handleAdd() {
+    if (isAdded || isAdding) return;
+
+    restoreAddButtonFocus.current =
+      document.activeElement === addButtonRef.current;
+    onAdd?.(book);
+  }
 
   return (
     <article className="flex min-w-0 flex-col rounded-card border border-border-default/55 bg-background-canvas p-3 shadow-[0_1px_3px_rgba(47,36,17,0.035)] transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-primary/35 hover:shadow-[0_8px_24px_rgba(47,36,17,0.09)] motion-reduce:transform-none motion-reduce:transition-none sm:p-3.5">
@@ -75,17 +93,22 @@ export function CatalogBookCard({
 
         <div className="mt-auto pt-5">
           <Button
+            ref={addButtonRef}
             type="button"
-            disabled={isAdded || isAdding}
+            disabled={isAdding}
+            aria-disabled={isAdded}
             loading={isAdding}
-            onClick={() => onAdd?.(book)}
-            className="min-h-11 w-full gap-2 rounded-field px-2 text-xs leading-tight"
+            onClick={handleAdd}
+            className="min-h-11 w-full gap-2 rounded-field px-2 text-xs leading-tight aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           >
             <BookPlus aria-hidden="true" className="size-4 shrink-0" />
             <span>
               {isAdded ? "Adicionado à biblioteca" : "Adicionar à biblioteca"}
             </span>
           </Button>
+          <p role="status" aria-live="polite" className="sr-only">
+            {isAdded ? `${book.title} foi adicionado à sua biblioteca.` : ""}
+          </p>
           {errorMessage && (
             <p
               role="alert"
@@ -98,7 +121,7 @@ export function CatalogBookCard({
             type="button"
             disabled
             variant="ghost"
-            className="mt-1 min-h-10 w-full gap-2 px-2 text-xs"
+            className="mt-1 min-h-11 w-full gap-2 px-2 text-xs"
           >
             <Eye aria-hidden="true" className="size-3.5" />
             Ver detalhes

@@ -1,42 +1,123 @@
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router";
-import { App } from "./app.tsx";
-import { AppShell } from "./components/layout/AppShell.tsx";
-import { AuthLayout } from "./components/layout/AuthLayout.tsx";
-import { BookDetails } from "./components/pages/BookDetails.tsx";
-import { Dashboard } from "./components/pages/Dashboard.tsx";
-import { GoogleOAuthCallback } from "./components/pages/GoogleOAuthCallback.tsx";
-import { Library } from "./components/pages/Library.tsx";
-import { Login } from "./components/pages/Login.tsx";
-import { NotFound } from "./components/pages/NotFound.tsx";
-import { Register } from "./components/pages/Register.tsx";
-import { Search } from "./components/pages/Search.tsx";
 import { RequireUser } from "./components/routing/RequireUser.tsx";
+import { RouteFocusManager } from "./components/routing/RouteFocusManager.tsx";
+import { LoadingState } from "./components/ui/LoadingState.tsx";
+
+const App = lazy(() =>
+  import("./app.tsx").then((module) => ({ default: module.App })),
+);
+const AppShell = lazy(() =>
+  import("./components/layout/AppShell.tsx").then((module) => ({
+    default: module.AppShell,
+  })),
+);
+const AuthLayout = lazy(() =>
+  import("./components/layout/AuthLayout.tsx").then((module) => ({
+    default: module.AuthLayout,
+  })),
+);
+const BookDetails = lazy(() =>
+  import("./components/pages/BookDetails.tsx").then((module) => ({
+    default: module.BookDetails,
+  })),
+);
+const Dashboard = lazy(() =>
+  import("./components/pages/Dashboard.tsx").then((module) => ({
+    default: module.Dashboard,
+  })),
+);
+const GoogleOAuthCallback = lazy(() =>
+  import("./components/pages/GoogleOAuthCallback.tsx").then((module) => ({
+    default: module.GoogleOAuthCallback,
+  })),
+);
+const Library = lazy(() =>
+  import("./components/pages/Library.tsx").then((module) => ({
+    default: module.Library,
+  })),
+);
+const Login = lazy(() =>
+  import("./components/pages/Login.tsx").then((module) => ({
+    default: module.Login,
+  })),
+);
+const NotFound = lazy(() =>
+  import("./components/pages/NotFound.tsx").then((module) => ({
+    default: module.NotFound,
+  })),
+);
+const Register = lazy(() =>
+  import("./components/pages/Register.tsx").then((module) => ({
+    default: module.Register,
+  })),
+);
+const Search = lazy(() =>
+  import("./components/pages/Search.tsx").then((module) => ({
+    default: module.Search,
+  })),
+);
+
+const pageFallback = <LoadingState label="Carregando página" />;
 
 const queryClient = new QueryClient();
+const rootElement = document.getElementById("root");
 
-createRoot(document.getElementById("root")!).render(
+if (!rootElement) {
+  throw new Error("Root element not found.");
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <RouteFocusManager />
         <Routes>
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+          <Route
+            element={
+              <Suspense fallback={pageFallback}>
+                <AuthLayout />
+              </Suspense>
+            }
+          >
+            <Route
+              path="/login"
+              element={
+                <Suspense fallback={pageFallback}>
+                  <Login />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <Suspense fallback={pageFallback}>
+                  <Register />
+                </Suspense>
+              }
+            />
           </Route>
           <Route
             path="/auth/google/callback"
-            element={<GoogleOAuthCallback />}
+            element={
+              <Suspense fallback={pageFallback}>
+                <GoogleOAuthCallback />
+              </Suspense>
+            }
           />
 
           <Route
             element={
-              <AppShell>
-                <Outlet />
-              </AppShell>
+              <Suspense fallback={pageFallback}>
+                <AppShell>
+                  <Suspense fallback={pageFallback}>
+                    <Outlet />
+                  </Suspense>
+                </AppShell>
+              </Suspense>
             }
           >
             <Route index element={<App />} />
@@ -49,7 +130,14 @@ createRoot(document.getElementById("root")!).render(
             </Route>
           </Route>
 
-          <Route path="*" element={<NotFound />} />
+          <Route
+            path="*"
+            element={
+              <Suspense fallback={pageFallback}>
+                <NotFound />
+              </Suspense>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

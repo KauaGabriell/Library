@@ -131,7 +131,7 @@ export function AppShell({ children }: AppShellProps) {
             aria-expanded={menuOpen}
             aria-controls={menuId}
             onClick={() => setMenuOpen((isOpen) => !isOpen)}
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-field border border-border-default text-text-primary hover:bg-background-surface lg:hidden"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-field border border-border-control text-text-primary hover:bg-background-surface lg:hidden"
           >
             {menuOpen ? (
               <X aria-hidden="true" className="size-5" strokeWidth={1.8} />

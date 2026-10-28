@@ -7,6 +7,7 @@ import { LibraryEntryActions } from "./LibraryEntryActions";
 
 type LibraryTableProps = {
   items: LibraryEntryPublicResponse[];
+  onDeleteSuccess: (bookTitle: string) => void;
 };
 
 const ratingStars = [1, 2, 3, 4, 5] as const;
@@ -54,12 +55,12 @@ function RatingStars({ rating }: { rating: number | null }) {
   );
 }
 
-export function LibraryTable({ items }: LibraryTableProps) {
+export function LibraryTable({ items, onDeleteSuccess }: LibraryTableProps) {
   return (
     <div className="overflow-x-auto rounded-card border border-border-default/70 bg-background-canvas">
       <table
         aria-label="Livros na biblioteca"
-        className="w-full min-w-[46rem] table-fixed border-collapse text-left"
+        className="w-full min-w-184 table-fixed border-collapse text-left"
       >
         <colgroup>
           <col className="w-[42%]" />
@@ -125,22 +126,17 @@ export function LibraryTable({ items }: LibraryTableProps) {
                   {formatAddedAt(entry.createdAt)}
                 </td>
                 <td className="px-3 py-3">
-                  <ReadingStatusBadge
-                    status={entry.status}
-                    className={`rounded-field text-text-primary ${
-                      entry.status === "WANT_TO_READ"
-                        ? "bg-status-want-to-read-border/20"
-                        : entry.status === "READING"
-                          ? "bg-status-reading-border/20"
-                          : "bg-status-read-border/20"
-                    }`}
-                  />
+                  <ReadingStatusBadge status={entry.status} />
                 </td>
                 <td className="px-3 py-3 font-interface text-body-sm text-text-primary">
                   <RatingStars rating={entry.rating} />
                 </td>
                 <td className="px-2 py-3">
-                  <LibraryEntryActions entry={entry} variant="table" />
+                  <LibraryEntryActions
+                    entry={entry}
+                    variant="table"
+                    onDeleteSuccess={onDeleteSuccess}
+                  />
                 </td>
               </tr>
             );

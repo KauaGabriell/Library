@@ -41,7 +41,7 @@ export function Select({
         disabled={disabled}
         aria-invalid={hasError ? true : ariaInvalid}
         aria-describedby={describedBy}
-        className={`min-h-11 w-full border-b-2 border-border-default bg-background-surface px-3 py-2 text-text-primary transition-colors focus-visible:border-b-brand-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:text-text-muted disabled:opacity-50 motion-reduce:transition-none ${hasError ? "border-b-feedback-error focus-visible:border-b-feedback-error" : ""} ${className ?? ""}`}
+        className={`min-h-11 w-full border-b-2 border-b-border-control bg-background-surface px-3 py-2 text-text-primary transition-colors focus-visible:border-b-brand-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:text-text-muted disabled:opacity-50 motion-reduce:transition-none ${hasError ? "border-b-feedback-error focus-visible:border-b-feedback-error" : ""} ${className ?? ""}`}
       >
         {children}
       </select>

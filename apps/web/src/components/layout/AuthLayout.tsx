@@ -47,12 +47,14 @@ export function AuthLayout() {
         >
           <NavLink
             to="/login"
+            data-route-focus="/login"
             className={({ isActive }) => tabClassName(isActive)}
           >
             Entrar
           </NavLink>
           <NavLink
             to="/register"
+            data-route-focus="/register"
             className={({ isActive }) => tabClassName(isActive)}
           >
             Criar conta

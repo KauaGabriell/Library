@@ -10,6 +10,7 @@ import {
   PencilLine,
   Star,
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
 import BookCover from "../../assets/bookCover.jpg";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
@@ -75,6 +76,7 @@ function SummaryMetricCard({
 }
 
 export function Dashboard() {
+  const [goalStatusMessage, setGoalStatusMessage] = useState("");
   const user = useCurrentUser();
 
   const dashboardQuery = useQuery({
@@ -107,16 +109,36 @@ export function Dashboard() {
     [keyof typeof countsByStatus, number]
   >;
 
+  function handleGoalMutationSuccess(action: "saved" | "deleted") {
+    setGoalStatusMessage(
+      action === "saved"
+        ? "Meta de leitura salva."
+        : "Meta de leitura removida.",
+    );
+    window.requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLElement>('[data-route-focus="/dashboard"]')
+        ?.focus(),
+    );
+  }
+
   return (
     <div className="mx-auto max-w-272 lg:pt-4">
       <header className="mb-8">
-        <h1 className="font-heading text-[2rem] leading-tight font-medium text-text-primary sm:text-[2.5rem]">
+        <h1
+          data-route-focus="/dashboard"
+          tabIndex={-1}
+          className="font-heading text-[2rem] leading-tight font-medium text-text-primary sm:text-[2.5rem]"
+        >
           Bem-vindo de volta, {user.data?.name}!
         </h1>
         <p className="mt-1 font-interface text-sm text-text-secondary">
           Veja seu progresso e descubra seus próximos livros
         </p>
       </header>
+      <p role="status" aria-live="polite" className="sr-only">
+        {goalStatusMessage}
+      </p>
 
       <section
         aria-label="Resumo da biblioteca"
@@ -270,6 +292,7 @@ export function Dashboard() {
                 </h2>
                 <ReadingGoalDialog
                   mode="edit"
+                  onMutationSuccess={handleGoalMutationSuccess}
                   initialTargetBooks={
                     dashboardQuery.data.readingGoal.targetBooks
                   }
@@ -326,6 +349,7 @@ export function Dashboard() {
                 </div>
               </div>
               <ReadingGoalDialog
+                onMutationSuccess={handleGoalMutationSuccess}
                 trigger={
                   <Button
                     variant="tertiary"
