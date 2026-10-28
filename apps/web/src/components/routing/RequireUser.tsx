@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { fetcher } from "../../lib/api";
 import { ApiClientError } from "../../lib/apiError";
 import { ErrorState } from "../ui/ErrorState";
 import { LoadingState } from "../ui/LoadingState";
 
 export function RequireUser() {
+  // Subscribe to location changes so browser history navigation rechecks the session.
+  useLocation();
   const meQuery = useQuery({
     queryKey: ["auth", "me"],
     queryFn: async () => await fetcher("/auth/me"),

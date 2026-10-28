@@ -352,13 +352,16 @@ test.describe("Logout", () => {
     await page.getByRole("button", { name: "Sair" }).click();
     await expect(page).toHaveURL(/\/login$/);
 
+    const checksBeforeHistoryBack = unauthenticatedCheckCount;
     await page.goBack();
 
+    await expect
+      .poll(() => unauthenticatedCheckCount)
+      .toBeGreaterThan(checksBeforeHistoryBack);
     await expect(page).toHaveURL(/\/login$/);
     await expect(
       page.getByRole("heading", { name: "Literaria" }),
     ).toBeVisible();
-    expect(unauthenticatedCheckCount).toBeGreaterThan(0);
   });
 
   test("mostra falha e permite tentar logout novamente", async ({ page }) => {
