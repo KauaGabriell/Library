@@ -357,9 +357,11 @@ test("adds a Google Books result to the library and marks it as added", async ({
     source: "GOOGLE_BOOKS",
     googleBooksId: dune.googleBooksId,
   });
-  await expect(
-    page.getByRole("button", { name: "Adicionado à biblioteca" }),
-  ).toBeDisabled();
+  const addedButton = page.getByRole("button", {
+    name: "Adicionado à biblioteca",
+  });
+  await expect(addedButton).toBeDisabled();
+  await expect(addedButton).toBeFocused();
 });
 
 test("shows an added book in the library and dashboard", async ({ page }) => {

@@ -1,6 +1,12 @@
 import { defineConfig } from "@playwright/test";
 
-const baseURL = "http://127.0.0.1:4175";
+const processEnvironment = (
+  globalThis as typeof globalThis & {
+    process?: { env?: { CI?: string; LIBRARY_E2E_PORT?: string } };
+  }
+).process?.env;
+const port = processEnvironment?.LIBRARY_E2E_PORT ?? "4175";
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -13,13 +19,9 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4175 --strictPort",
+      `node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
-    reuseExistingServer: !(
-      globalThis as typeof globalThis & {
-        process?: { env?: { CI?: string } };
-      }
-    ).process?.env?.CI,
+    reuseExistingServer: !processEnvironment?.CI,
     env: {
       VITE_API_URL: "http://127.0.0.1:3000",
     },

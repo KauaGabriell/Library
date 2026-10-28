@@ -64,7 +64,9 @@ test("preserves dashboard layout with book skeletons while loading", async ({
     finishDashboardRequest();
   }
 
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Carregando painel..." }),
+  ).toHaveCount(0);
 });
 
 test("renders the best-rated book and rating returned by the API", async ({

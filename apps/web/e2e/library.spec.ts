@@ -9,20 +9,25 @@ const publicUser = {
   avatarUrl: null,
 };
 
-function entry(id: number, title = `Livro ${id}`, status = "READING") {
+function entry(
+  id: number,
+  title = `Livro ${id}`,
+  status = "READING",
+  rating: number | null = null,
+) {
   return {
     id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
     status,
     currentPage: 25,
     progressPercent: 25,
-    rating: null,
+    rating,
     review: null,
     book: {
       googleBooksId: `google-${id}`,
       title,
       authors: [`Autor ${id}`],
       description: null,
-      coverUrl: null,
+      coverUrl: null as string | null,
       language: "pt-BR",
       pageCount: 100,
     },
@@ -120,9 +125,11 @@ test("searches, filters, sorts, paginates, and switches views from shared server
   const requestsBeforeShortSearch = requests.length;
   await search.fill("D");
   await page.clock.runFor(350);
-  await expect(page.getByRole("status")).toContainText(
-    "Digite pelo menos 2 caracteres",
-  );
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Digite pelo menos 2 caracteres" }),
+  ).toContainText("Digite pelo menos 2 caracteres");
   expect(requests.filter((url) => url.searchParams.has("q"))).toHaveLength(0);
   expect(requests.length).toBe(requestsBeforeShortSearch);
 
@@ -336,9 +343,11 @@ test("renders compact title-overlay cards with API star ratings and icon actions
   await expect(duneCard.locator("img")).toBeVisible();
   await expect(duneCard.getByText("Frank Herbert")).toBeVisible();
   await expect(duneCard.getByRole("heading", { name: "Duna" })).toBeVisible();
-  await expect(
-    duneCard.locator("div.group").getByText("Lido", { exact: true }),
-  ).toBeVisible();
+  const detailsButton = duneCard.getByRole("button", {
+    name: /Ver detalhes de Duna.*Status de leitura: Lido/,
+  });
+  await expect(detailsButton).toBeVisible();
+  await expect(detailsButton.getByText("Lido", { exact: true })).toBeVisible();
   const cardBounds = await duneCard.boundingBox();
   expect(cardBounds).not.toBeNull();
   expect(cardBounds?.width).toBeLessThanOrEqual(288);
@@ -356,7 +365,9 @@ test("renders compact title-overlay cards with API star ratings and icon actions
   const foundationCard = page.getByRole("article", { name: "Fundação" });
   const noRating = foundationCard.getByRole("img", { name: "Sem avaliação" });
   await expect(noRating.locator('svg[fill="none"]')).toHaveCount(5);
-  await expect(foundationCard.getByText("Sem avaliação", { exact: true })).toBeVisible();
+  await expect(
+    foundationCard.getByText("Sem avaliação", { exact: true }),
+  ).toBeVisible();
 });
 
 test("shows eight cards per page in four desktop columns", async ({ page }) => {
@@ -384,17 +395,15 @@ test("shows eight cards per page in four desktop columns", async ({ page }) => {
   });
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  const initialLibraryRequest = page.waitForRequest(
-    (request) => {
-      const requestUrl = new URL(request.url());
+  const initialLibraryRequest = page.waitForRequest((request) => {
+    const requestUrl = new URL(request.url());
 
-      return (
-        request.method() === "GET" &&
-        requestUrl.origin === apiUrl &&
-        requestUrl.pathname === "/library"
-      );
-    },
-  );
+    return (
+      request.method() === "GET" &&
+      requestUrl.origin === apiUrl &&
+      requestUrl.pathname === "/library"
+    );
+  });
   await page.goto("/library");
   const request = await initialLibraryRequest;
   expect(new URL(request.url()).searchParams.get("pageSize")).toBe("8");
@@ -404,8 +413,9 @@ test("shows eight cards per page in four desktop columns", async ({ page }) => {
   await expect(cards).toHaveCount(8);
 
   const cardYPositions = await Promise.all(
-    Array.from({ length: 5 }, async (_, index) =>
-      (await cards.nth(index).boundingBox())?.y,
+    Array.from(
+      { length: 5 },
+      async (_, index) => (await cards.nth(index).boundingBox())?.y,
     ),
   );
   expect(cardYPositions.slice(0, 4).every((y) => y === cardYPositions[0])).toBe(
@@ -578,7 +588,9 @@ test("updates status, retries a failed update, confirms deletion, and recovers f
   const editDialog = page.getByRole("dialog", {
     name: "Alterar status",
   });
-  await expect(editDialog.getByText("Livro gerenciado", { exact: true })).toBeVisible();
+  await expect(
+    editDialog.getByText("Livro gerenciado", { exact: true }),
+  ).toBeVisible();
   const editDialogBounds = await editDialog.boundingBox();
   expect(editDialogBounds?.width).toBeLessThanOrEqual(448);
   const statusSelect = editDialog.getByLabel("Novo status");

@@ -124,6 +124,9 @@ test("creates a reading goal and refreshes the dashboard cache", async ({
     "aria-valuenow",
     "16",
   );
+  await expect(
+    page.getByRole("heading", { name: "Bem-vindo de volta, Leitor!" }),
+  ).toBeFocused();
   await expect.poll(() => dashboard.dashboardRequestCount).toBe(2);
 });
 
