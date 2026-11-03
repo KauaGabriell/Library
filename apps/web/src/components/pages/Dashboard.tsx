@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import BookCover from "../../assets/bookCover.jpg";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { fetcher } from "../../lib/api";
+import { bookCoverFallbackUrl } from "../../lib/bookCover";
 import { ReadingGoalDialog } from "../dashboard/ReadingGoalDialog";
 import { Book } from "../ui/Book";
 import { Button } from "../ui/Button";
@@ -236,7 +236,7 @@ export function Dashboard() {
                     loading="lazy"
                     onError={(event) => {
                       event.currentTarget.onerror = null;
-                      event.currentTarget.src = BookCover;
+                      event.currentTarget.src = bookCoverFallbackUrl;
                     }}
                   />
                 ) : (

@@ -1,7 +1,7 @@
 import type { LibraryEntryPublicResponse } from "@library/contracts";
 import { Star } from "lucide-react";
 import { Link } from "react-router";
-import BookCover from "../../assets/bookCover.jpg";
+import { bookCoverFallbackUrl } from "../../lib/bookCover";
 import { ReadingStatusBadge } from "../ui/ReadingStatusBadge";
 import { LibraryEntryActions } from "./LibraryEntryActions";
 
@@ -100,7 +100,7 @@ export function LibraryTable({ items, onDeleteSuccess }: LibraryTableProps) {
                 <th scope="row" className="px-4 py-3 text-left font-normal">
                   <div className="flex min-w-0 items-center gap-3">
                     <img
-                      src={entry.book.coverUrl ?? BookCover}
+                      src={entry.book.coverUrl ?? bookCoverFallbackUrl}
                       alt={
                         entry.book.coverUrl
                           ? `Capa de ${entry.book.title}, por ${authors}`

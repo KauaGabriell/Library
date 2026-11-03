@@ -1,7 +1,7 @@
 import type { BookSearchItem } from "@library/contracts";
 import { BookOpen, BookPlus, Eye } from "lucide-react";
 import { useEffect, useRef } from "react";
-import BookCover from "../../assets/bookCover.jpg";
+import { bookCoverFallbackUrl } from "../../lib/bookCover";
 import { Button } from "../ui/Button";
 
 type CatalogBookCardProps = {
@@ -51,7 +51,7 @@ export function CatalogBookCard({
             loading="lazy"
             onError={(event) => {
               event.currentTarget.onerror = null;
-              event.currentTarget.src = BookCover;
+              event.currentTarget.src = bookCoverFallbackUrl;
             }}
           />
         ) : (
