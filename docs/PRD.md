@@ -29,7 +29,7 @@ Library é uma biblioteca pessoal web: usuário autentica, procura livros primei
 
 1. Uma demo pública permite concluir cadastro/login, salvar livro, registrá-lo como lido, avaliar/anotar e obter recomendação.
 2. Dados de leitura e notas nunca ficam acessíveis por outro usuário.
-3. Respostas inválidas ou indisponibilidade de Google Books/OpenAI não quebram a aplicação nem alteram dados locais.
+3. Respostas inválidas ou indisponibilidade de Google Books/Gemini não quebram a aplicação nem alteram dados locais.
 4. Lint, typecheck, testes unitários, integração e E2E dos fluxos críticos passam no CI.
 
 ## 3. Contexto e alinhamento estratégico
@@ -91,8 +91,8 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 
 ### Fluxo E — Descoberta por IA
 
-1. Usuário responde quiz de 5–7 preferências: gênero, objetivo, tamanho, ritmo, humor, temas e restrições.
-2. API envia somente respostas do quiz ao OpenAI.
+1. Usuário responde sete perguntas obrigatórias do quiz: gênero, objetivo, tamanho, ritmo, humor, temas e restrições. Campo opcional de contexto adicional aceita até 500 caracteres e não conta como resposta.
+2. API envia somente essas preferências do quiz ao Gemini.
 3. Provider retorna três itens estruturados: título, autor e justificativa.
 4. API valida schema, remove duplicatas e enriquece itens no Google Books.
 5. Web mostra as opções ou estado recuperável de indisponibilidade; usuário pode salvar uma sugestão.
@@ -133,7 +133,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 | RF-007 | Avaliar e resenhar | Must | Rating inteiro entre 1–5 e review só são aceitos se estado resultante for `READ`. |
 | RF-008 | Gerir anotações | Must | Criar/editar/excluir Note só é permitido ao owner de LibraryEntry em `READING` ou `READ`; `WANT_TO_READ` bloqueia mutação. |
 | RF-009 | Dashboard | Should | Exibe contagem por status, média de ratings de `READ`, itens recentes e meta anual opcional do usuário (`readingGoal: null` quando ausente). |
-| RF-010 | Quiz | Must | Formulário exige respostas válidas antes de chamar API; usuário pode voltar sem perder respostas. |
+| RF-010 | Quiz | Must | Formulário exige as sete respostas válidas antes de chamar API; contexto adicional de preferências é opcional, limitado a 500 caracteres e não conta como resposta. Usuário pode voltar sem perder respostas. |
 | RF-011 | Recomendação IA | Must | Retorna exatamente três sugestões únicas, estruturadas e explicadas, ou fallback de indisponibilidade. |
 | RF-012 | Salvar recomendação | Must | Cada recomendação pode usar mesmo fluxo de inclusão e comunica conflito/sucesso. |
 | RF-013 | Estados de UX | Must | Cada consulta/mutação tem loading, empty quando aplicável, erro legível e retry quando seguro. |
@@ -182,7 +182,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 
 ### Arquitetura de alto nível
 
-Monorepo `pnpm` com três unidades: `apps/web` (React/Vite), `apps/api` (Fastify) e `packages/contracts` (Zod/tipos). API REST é fonte de verdade. PostgreSQL guarda dados relacionais. Adaptadores isolam Google Books e OpenAI; domínio não depende dos SDKs externos.
+Monorepo `pnpm` com três unidades: `apps/web` (React/Vite), `apps/api` (Fastify) e `packages/contracts` (Zod/tipos). API REST é fonte de verdade. PostgreSQL guarda dados relacionais. Adaptadores isolam Google Books e Gemini; domínio não depende dos SDKs externos.
 
 ### Módulos da API
 
@@ -194,7 +194,7 @@ Monorepo `pnpm` com três unidades: `apps/web` (React/Vite), `apps/api` (Fastify
 | Notes | conteúdo privado | comandos → Note | Library, Prisma |
 | Dashboard | agregações pessoais | sessão → métricas | Prisma |
 | Reading Goals | meta anual e progresso calculado | comando/sessão → ReadingGoal e resumo | Prisma, Library |
-| Recommendations | quiz e enriquecimento | QuizRequest → 3 recomendações | OpenAI, Catalog |
+| Recommendations | quiz e enriquecimento | QuizRequest → 3 recomendações | Gemini, Catalog |
 
 ### Entidades e ownership
 
@@ -246,7 +246,7 @@ Erros conhecidos seguem `{ code, message, fieldErrors? }`. Payloads de escrita s
 - OAuth usa Authorization Code, PKCE e state; redirect URIs são allowlisted no provedor.
 - Rate limit protege cadastro, login e recomendações.
 - Logs não contêm senha, token, cookie, review ou texto de Note.
-- OpenAI recebe apenas respostas do quiz, nunca biblioteca, ratings, resenhas ou anotações.
+- Gemini recebe apenas respostas do quiz e contexto adicional de preferências de leitura, nunca biblioteca, histórico de leitura, ratings, resenhas ou anotações. O campo de contexto deve orientar o usuário a informar somente preferências de leitura.
 
 ### Desempenho e escala
 
@@ -258,7 +258,7 @@ Erros conhecidos seguem `{ code, message, fieldErrors? }`. Payloads de escrita s
 
 - Falha externa não cria LibraryEntry/Note parcial e produz estado retryável.
 - API usa logs estruturados com request ID, rota, status, duração e categoria de erro.
-- Medir latência/taxa de erro de API, Google Books, OpenAI, auth e recomendações estruturadas.
+- Medir latência/taxa de erro de API, Google Books, Gemini, auth e recomendações estruturadas.
 - Alertar aumento sustentado de 5xx interno ou falhas dos provedores.
 
 ### Acessibilidade e UX
@@ -276,8 +276,20 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 
 ### Entrada e saída
 
-- **Entrada:** gênero, objetivo, tamanho desejado, ritmo, humor, temas e restrições do quiz.
-- **Saída:** array de exatamente três objetos únicos com `title`, `author` e `reason`.
+- **Entrada:** sete respostas obrigatórias e fechadas, além de contexto adicional opcional de até 500 caracteres. O contexto não substitui nenhuma resposta e só pode conter preferências de leitura.
+
+| Campo | Obrigatório | Tipo e limite | Opções permitidas |
+|---|---|---|---|
+| `genres` — gênero | Sim | Múltipla escolha, 1–3 opções; `NO_PREFERENCE` deve ser selecionada sozinha. | `FANTASY`, `SCIENCE_FICTION`, `ROMANCE`, `MYSTERY_SUSPENSE`, `HORROR`, `HISTORICAL_FICTION`, `CONTEMPORARY_LITERATURE`, `BIOGRAPHY_MEMOIR`, `POPULAR_SCIENCE`, `PERSONAL_DEVELOPMENT`, `OTHER`, `NO_PREFERENCE`. |
+| `goal` — objetivo | Sim | Escolha única. | `RELAX`, `FEEL_MOVED`, `LEARN`, `REFLECT`, `HAVE_FUN`, `BREAK_ROUTINE`, `NO_PREFERENCE`. |
+| `bookLength` — tamanho desejado | Sim | Escolha única. | `SHORT`, `MEDIUM`, `LONG`, `NO_PREFERENCE`. |
+| `pace` — ritmo | Sim | Escolha única. | `FAST`, `BALANCED`, `CONTEMPLATIVE`, `NO_PREFERENCE`. |
+| `moods` — humor | Sim | Múltipla escolha, 1–2 opções; `NO_PREFERENCE` deve ser selecionada sozinha. | `LIGHT`, `COZY`, `HUMOROUS`, `INSPIRING`, `EMOTIONAL`, `DARK`, `TENSE`, `NO_PREFERENCE`. |
+| `themes` — temas | Sim | Múltipla escolha, 1–3 opções; `NO_PREFERENCE` deve ser selecionada sozinha. | `HUMAN_RELATIONSHIPS`, `ADVENTURE`, `INVESTIGATION`, `HISTORY`, `SCIENCE_TECHNOLOGY`, `NATURE`, `SOCIAL_ISSUES`, `SELF_KNOWLEDGE`, `MAGIC`, `NO_PREFERENCE`. |
+| `avoid` — restrições | Sim | Múltipla escolha, 1–6 opções; `NONE` deve ser selecionada sozinha. | `EXPLICIT_VIOLENCE`, `HORROR`, `EXPLICIT_SEXUAL_SCENES`, `SAD_ENDINGS`, `HEAVY_TOPICS`, `SERIES`, `NONE`. |
+| `additionalContext` — contexto adicional | Não | Texto opcional, até 500 caracteres; não conta como resposta do quiz. | Texto livre limitado a preferências de leitura. Não incluir notas, resenhas, anotações ou histórico da biblioteca. |
+
+- **Saída:** objeto `{ recommendations }` com exatamente três itens únicos por `title` e `author`, após trim, redução de espaços repetidos e conversão para minúsculas. Cada item contém `title`, `author` e `justification`.
 - **Validação:** Zod rejeita quantidade diferente de três, campos vazios, duplicatas e texto fora do contrato.
 - **Enriquecimento:** Catalog busca título/autor no Google Books para capa/metadados antes da resposta final.
 
@@ -300,7 +312,7 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 
 - CI passa lint, format-check, typecheck, unitários, integração e E2E críticos.
 - Durante smoke test, zero respostas 5xx internas nos fluxos críticos.
-- Falha simulada de Google Books/OpenAI é exibida como erro recuperável.
+- Falha simulada de Google Books/Gemini é exibida como erro recuperável.
 - Todas rotas privadas rejeitam usuário não autenticado e acesso cruzado.
 
 ### Release
@@ -328,7 +340,7 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 | Risco | Impacto | Probabilidade | Mitigação | Dono |
 |---|---|---|---|---|
 | Quota/indisponibilidade Google Books | Médio | Média | timeout, adapter, erro/retry | API |
-| Custo/limite OpenAI | Médio | Média | payload curto, rate limit, métricas e orçamento | API |
+| Custo/limite Gemini | Médio | Média | payload curto, rate limit, métricas e orçamento | API |
 | OAuth configurado errado | Alto | Baixa | checklist redirect URI e staging smoke | DevOps |
 | saída IA inválida | Médio | Média | schema, testes offline e fallback | API/QA |
 | acesso cruzado de dados | Alto | Baixa | filtro por owner e integração de segurança | API/QA |
@@ -336,7 +348,7 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 
 **Premissas:** uso individual; baixo volume inicial; PostgreSQL/hosting gerenciados; provedores possuem credenciais válidas; sem obrigação de compliance setorial; usuário aceita catálogo externo.
 
-**Dependências:** Google OAuth client, Google Books, OpenAI, PostgreSQL, hosting web/API e configuração de domínio/HTTPS.
+**Dependências:** Google OAuth client, Google Books, Gemini, PostgreSQL, hosting web/API e configuração de domínio/HTTPS.
 
 ## 14. Roadmap de produto
 
@@ -344,13 +356,13 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 |---|---|---|---|
 | Fundação | executar com segurança | workspace, CI, DB, contracts | clone limpo passa pipeline |
 | Núcleo privado | registrar leitura | auth, catálogo, biblioteca, página atual, notes, dashboard e meta anual | CRUD isolado por owner e meta calculada corretamente |
-| Descoberta | recomendar | quiz, OpenAI, enriquecimento | 3 sugestões/fallback testado |
+| Descoberta | recomendar | quiz, Gemini, enriquecimento | 3 sugestões/fallback testado |
 | Release | publicar demo | hardening, docs, deploy | smoke público aprovado |
 | Futuro social | interação opcional | profile, visibility, follow, activity | novo PRD e ADR aprovados |
 
 ## 15. Perguntas em aberto
 
-Nenhuma decisão em aberto bloqueia desenvolvimento local. Antes do deploy, mantenedor define provedor, domínio, limites mensais de custo e valores de produção para Google/OpenAI.
+Nenhuma decisão em aberto bloqueia desenvolvimento local. Antes do deploy, mantenedor define provedor, domínio, limites mensais de custo e valores de produção para Google/Gemini.
 
 ## 16. Checklist de qualidade
 
