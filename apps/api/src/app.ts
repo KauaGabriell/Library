@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
+import { GoogleGenAI } from "@google/genai";
 import Fastify from "fastify";
 import {
   jsonSchemaTransform,
@@ -15,10 +16,14 @@ import { prisma } from "./lib/prisma";
 import { registerErrorHandler } from "./middlewares/errorHandling";
 import { authRoutes } from "./modules/auth/authRoutes";
 import { bookRoutes } from "./modules/books/bookRoutes";
+import { createGoogleBooksCatalog } from "./modules/books/googleBooksCatalogAdapter";
 import { dashboardRoutes } from "./modules/dashboard/dashboardRoutes";
 import { libraryRoutes } from "./modules/library/libraryRoutes";
 import { notesRoutes } from "./modules/notes/notesRoutes";
 import { readingGoalRoutes } from "./modules/readingGoal/readingGoalRoutes";
+import { createGeminiRecommendationProvider } from "./modules/recommendations/geminiRecommendationAdapter";
+import { recommendationsRoutes } from "./modules/recommendations/recommendationsRoutes";
+import { createRecommendationsService } from "./modules/recommendations/recommendationsService";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: loggerConfig });
@@ -65,8 +70,20 @@ app.register(fastifyRateLimit, {
   },
 });
 
+const recommendationsService = createRecommendationsService({
+  provider: createGeminiRecommendationProvider({
+    client: new GoogleGenAI({ apiKey: envConfig.GEMINI_API_KEY }),
+    model: envConfig.GEMINI_RECOMMENDATION_MODEL,
+  }),
+  googleBooksCatalog: createGoogleBooksCatalog({}),
+});
+
 app.register(authRoutes, { prefix: "/auth" });
 app.register(bookRoutes, { prefix: "/books" });
+app.register(recommendationsRoutes, {
+  prefix: "/recommendations",
+  recommendationsService,
+});
 app.register(readingGoalRoutes, { prefix: "/reading-goal" });
 app.register(libraryRoutes);
 app.register(notesRoutes);

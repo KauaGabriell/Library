@@ -12,6 +12,8 @@ const envSchema = z.object({
   GOOGLE_REDIRECT_URI: z.url(),
   OAUTH_AUTHORIZATION_TTL_SECONDS: z.coerce.number().int().min(60).max(600),
   GOOGLE_BOOKS_API_KEY: z.string().min(1),
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_RECOMMENDATION_MODEL: z.string().min(1).default("gemini-3.8-flash"),
 });
 
 const envConfig = envSchema.parse(process.env);

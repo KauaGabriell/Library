@@ -13,3 +13,5 @@ process.env.GOOGLE_REDIRECT_URI ??=
   "http://localhost:3001/auth/google/callback";
 process.env.OAUTH_AUTHORIZATION_TTL_SECONDS ??= "300";
 process.env.GOOGLE_BOOKS_API_KEY = "test-google-books-api-key";
+process.env.GEMINI_API_KEY = "test-gemini-api-key";
+process.env.GEMINI_RECOMMENDATION_MODEL ??= "gemini-3.8-flash";
