@@ -14,3 +14,4 @@ export {
 export * from "./libraryEntry/index.js";
 export * from "./notes/index.js";
 export * from "./readingGoal/index.js";
+export * from "./recommendation/index.js";
