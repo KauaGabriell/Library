@@ -55,6 +55,11 @@ const Register = lazy(() =>
     default: module.Register,
   })),
 );
+const RecommendationQuiz = lazy(() =>
+  import("./components/pages/RecommendationQuiz.tsx").then((module) => ({
+    default: module.RecommendationQuiz,
+  })),
+);
 const Search = lazy(() =>
   import("./components/pages/Search.tsx").then((module) => ({
     default: module.Search,
@@ -126,6 +131,10 @@ createRoot(rootElement).render(
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="library" element={<Library />} />
               <Route path="library/:libraryId" element={<BookDetails />} />
+              <Route
+                path="recommendations/quiz"
+                element={<RecommendationQuiz />}
+              />
               <Route path="search" element={<Search />} />
             </Route>
           </Route>

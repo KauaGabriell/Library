@@ -375,9 +375,13 @@ export function Dashboard() {
               Responda nosso quiz inteligente e receba recomendações
               personalizadas com base no seu perfil.
             </p>
-            <p className="mt-4 font-interface text-xs font-semibold tracking-wide text-text-muted">
-              Disponível em breve
-            </p>
+            <Link
+              to="/recommendations/quiz"
+              className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-sm bg-brand-primary px-3 py-2 font-interface text-xs font-semibold text-white transition-colors hover:bg-brand-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none"
+            >
+              Começar quiz
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
           </section>
         </aside>
       </div>
