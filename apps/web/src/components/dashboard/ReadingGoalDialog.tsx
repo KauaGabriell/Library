@@ -120,6 +120,7 @@ export function ReadingGoalDialog({
             <div className="flex flex-col gap-2">
               <Input
                 label="Livros que deseja ler"
+                variant="modal"
                 type="number"
                 inputMode="numeric"
                 step={1}
