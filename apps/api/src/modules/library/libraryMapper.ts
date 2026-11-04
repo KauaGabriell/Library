@@ -55,9 +55,11 @@ export function mapLibraryEntryToPublicResponse(
       title: entry.book.title,
       authors: entry.book.authors,
       description: entry.book.description,
+      descriptionSourceUrl: entry.book.descriptionSourceUrl,
       coverUrl: entry.book.coverUrl,
       language: entry.book.language,
       pageCount: entry.book.pageCount,
+      pageCountSourceUrl: entry.book.pageCountSourceUrl,
     },
   });
 }

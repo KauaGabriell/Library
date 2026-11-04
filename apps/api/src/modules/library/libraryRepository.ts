@@ -34,9 +34,11 @@ const libraryEntrySelect = {
       title: true,
       authors: true,
       description: true,
+      descriptionSourceUrl: true,
       coverUrl: true,
       language: true,
       pageCount: true,
+      pageCountSourceUrl: true,
     },
   },
 } as const;

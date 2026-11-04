@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { bookPublicResponse } from "../book/bookSchema.js";
+import { bookPublicResponse, bookSourceUrlSchema } from "../book/bookSchema.js";
 import { readingStateSchema } from "../book/readingState.js";
 import { publicNoteResponseSchema } from "../notes/notes.js";
 
@@ -13,9 +13,11 @@ const manualCreateSchema = z.strictObject({
   title: z.string().min(1),
   authors: z.array(z.string()).default([]),
   description: z.string().optional(),
+  descriptionSourceUrl: bookSourceUrlSchema.optional(),
   coverUrl: z.string().optional(),
   language: z.string().optional(),
   pageCount: z.int().min(1).optional(),
+  pageCountSourceUrl: bookSourceUrlSchema.optional(),
 });
 
 export const libraryEntryCreateSchema = z.discriminatedUnion("source", [

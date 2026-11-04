@@ -212,9 +212,11 @@ describe("POST /library", () => {
         title: "Título oficial",
         authors: ["Autor oficial"],
         description: "Descrição oficial",
+        descriptionSourceUrl: null,
         coverUrl: "https://example.com/cover.png",
         language: "pt-BR",
         pageCount: 240,
+        pageCountSourceUrl: null,
       },
     });
     expect(response.json()).not.toHaveProperty("userId");
@@ -289,6 +291,37 @@ describe("POST /library", () => {
         where: { userId: { in: [firstUser.user.id, secondUser.user.id] } },
       }),
     ).toBe(2);
+  });
+
+  it("persists optional metadata supplied in the manual registration form", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const title = ["Manual metadata", randomUUID()].join(" ");
+    manualTitles.add(title);
+    const metadata = {
+      title,
+      authors: ["Autor informado"],
+      description: "Sinopse informada pelo leitor.",
+      coverUrl: "https://example.com/manual-cover.jpg",
+      language: "pt-BR",
+      pageCount: 312,
+    };
+    const response = await app.inject({
+      method: "POST",
+      url: "/library",
+      headers: { cookie },
+      payload: { source: "MANUAL", ...metadata },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().book).toMatchObject({
+      ...metadata,
+      googleBooksId: null,
+    });
+    const entry = await prisma.libraryEntry.findFirst({
+      where: { userId: user.id, book: { title } },
+      include: { book: true },
+    });
+    expect(entry?.book).toMatchObject({ ...metadata, googleBooksId: null });
+    expect(catalogMock.getById).not.toHaveBeenCalled();
   });
 
   it("allows repeated manual books and defaults omitted authors to []", async () => {
@@ -395,9 +428,11 @@ describe("GET /library", () => {
             title: ownFixture.book.title,
             authors: ownFixture.book.authors,
             description: ownFixture.book.description,
+            descriptionSourceUrl: ownFixture.book.descriptionSourceUrl,
             coverUrl: ownFixture.book.coverUrl,
             language: ownFixture.book.language,
             pageCount: ownFixture.book.pageCount,
+            pageCountSourceUrl: ownFixture.book.pageCountSourceUrl,
           },
         },
       ],
@@ -969,9 +1004,11 @@ describe("PATCH /library/:id", () => {
         title: book.title,
         authors: book.authors,
         description: book.description,
+        descriptionSourceUrl: book.descriptionSourceUrl,
         coverUrl: book.coverUrl,
         language: book.language,
         pageCount: 240,
+        pageCountSourceUrl: book.pageCountSourceUrl,
       },
     });
 
@@ -1029,9 +1066,11 @@ describe("PATCH /library/:id", () => {
         title: book.title,
         authors: book.authors,
         description: book.description,
+        descriptionSourceUrl: book.descriptionSourceUrl,
         coverUrl: book.coverUrl,
         language: book.language,
         pageCount: book.pageCount,
+        pageCountSourceUrl: book.pageCountSourceUrl,
       },
     });
     expect(response.json()).not.toHaveProperty("userId");

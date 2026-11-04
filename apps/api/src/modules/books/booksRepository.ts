@@ -55,10 +55,16 @@ export const booksRepository = {
           ...(input.description !== undefined
             ? { description: input.description }
             : {}),
+          ...(input.descriptionSourceUrl !== undefined
+            ? { descriptionSourceUrl: input.descriptionSourceUrl }
+            : {}),
           ...(input.coverUrl !== undefined ? { coverUrl: input.coverUrl } : {}),
           ...(input.language !== undefined ? { language: input.language } : {}),
           ...(input.pageCount !== undefined
             ? { pageCount: input.pageCount }
+            : {}),
+          ...(input.pageCountSourceUrl !== undefined
+            ? { pageCountSourceUrl: input.pageCountSourceUrl }
             : {}),
         },
       });
