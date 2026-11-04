@@ -16,7 +16,6 @@ import { prisma } from "./lib/prisma";
 import { registerErrorHandler } from "./middlewares/errorHandling";
 import { authRoutes } from "./modules/auth/authRoutes";
 import { bookRoutes } from "./modules/books/bookRoutes";
-import { createGoogleBooksCatalog } from "./modules/books/googleBooksCatalogAdapter";
 import { dashboardRoutes } from "./modules/dashboard/dashboardRoutes";
 import { libraryRoutes } from "./modules/library/libraryRoutes";
 import { notesRoutes } from "./modules/notes/notesRoutes";
@@ -75,7 +74,6 @@ const recommendationsService = createRecommendationsService({
     client: new GoogleGenAI({ apiKey: envConfig.GEMINI_API_KEY }),
     model: envConfig.GEMINI_RECOMMENDATION_MODEL,
   }),
-  googleBooksCatalog: createGoogleBooksCatalog({}),
 });
 
 app.register(authRoutes, { prefix: "/auth" });

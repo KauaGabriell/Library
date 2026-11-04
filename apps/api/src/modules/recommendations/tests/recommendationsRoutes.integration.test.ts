@@ -1,6 +1,4 @@
 import type {
-  BookSearchItem,
-  BookSearchQuery,
   RecommendationQuizRequest,
   RecommendationQuizResponse,
 } from "@library/contracts";
@@ -74,26 +72,6 @@ const providerRecommendations: RecommendationQuizResponse["recommendations"] = [
   },
 ];
 
-const catalogBooks: BookSearchItem[] = providerRecommendations.map(
-  ({ title, author }, index) => ({
-    googleBooksId: `recommendation-book-${index + 1}`,
-    title,
-    authors: [author],
-    description: null,
-    coverUrl: `https://books.example/cover-${index + 1}.jpg`,
-    language: "pt-BR",
-    pageCount: 240 + index,
-  }),
-);
-
-function catalogResultForQuery({ q }: BookSearchQuery) {
-  const book = catalogBooks.find(
-    ({ title, authors }) => q === `intitle:"${title}" inauthor:"${authors[0]}"`,
-  );
-
-  return { items: book ? [book] : [], hasMore: false };
-}
-
 function createAuthenticatedSession() {
   const session = createSessionToken();
   const userId = crypto.randomUUID();
@@ -145,8 +123,8 @@ beforeEach(() => {
     .mockResolvedValue({ recommendations: providerRecommendations });
   recommendationMocks.search
     .mockReset()
-    .mockImplementation(async (query: BookSearchQuery) =>
-      catalogResultForQuery(query),
+    .mockRejectedValue(
+      new AppError("Catálogo indisponível", 502, "INTEGRATION_ERROR"),
     );
 });
 
@@ -182,7 +160,7 @@ describe("POST /recommendations", () => {
     expect(recommendationMocks.search).not.toHaveBeenCalled();
   });
 
-  it("returns three catalog-enriched recommendations", async () => {
+  it("returns three suggestions even when the catalog is unavailable", async () => {
     const sessionToken = createAuthenticatedSession();
     const response = await app.inject({
       method: "POST",
@@ -193,16 +171,13 @@ describe("POST /recommendations", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      recommendations: providerRecommendations.map((recommendation, index) => ({
-        book: catalogBooks[index],
-        justification: recommendation.justification,
-      })),
+      recommendations: providerRecommendations,
     });
     expect(recommendationMocks.getRecommendations).toHaveBeenCalledOnce();
     expect(recommendationMocks.getRecommendations).toHaveBeenCalledWith(
       quizAnswers,
     );
-    expect(recommendationMocks.search).toHaveBeenCalledTimes(3);
+    expect(recommendationMocks.search).not.toHaveBeenCalled();
   });
 
   it("returns a standardized integration error when the provider fails", async () => {

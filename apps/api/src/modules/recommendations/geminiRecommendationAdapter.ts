@@ -19,7 +19,7 @@ type GeminiRecommendationAdapterOptions = {
   maxOutputTokens?: number;
 };
 
-const defaultTimeoutMs = 15_000;
+const defaultTimeoutMs = 60_000;
 const defaultMaxOutputTokens = 900;
 
 const recommendationInstructions = [

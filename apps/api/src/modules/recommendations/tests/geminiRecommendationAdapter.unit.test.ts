@@ -39,7 +39,7 @@ const validResponse: RecommendationQuizResponse = {
   ],
 };
 
-function createProvider(response: unknown) {
+function createProvider(response: unknown, timeoutMs?: number) {
   const generateContent = vi
     .fn()
     .mockResolvedValue({ text: JSON.stringify(response) });
@@ -47,7 +47,7 @@ function createProvider(response: unknown) {
   const provider = createGeminiRecommendationProvider({
     client,
     model: "test-model",
-    timeoutMs: 12_000,
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
     maxOutputTokens: 900,
   });
 
@@ -63,6 +63,19 @@ async function expectIntegrationError(operation: Promise<unknown>) {
 }
 
 describe("Gemini recommendation adapter", () => {
+  it("configures Gemini request timeout to 60 seconds", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    try {
+      const { provider } = createProvider(validResponse);
+
+      await provider.getRecommendations(quizAnswers);
+
+      expect(timeoutSpy).toHaveBeenCalledWith(60_000);
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
   it("returns a validated response using only quiz preferences", async () => {
     const { provider, generateContent } = createProvider(validResponse);
 

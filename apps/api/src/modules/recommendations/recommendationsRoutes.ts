@@ -1,8 +1,8 @@
 import {
-  enrichedRecommendationResponseSchema,
   errorsSchema,
   rateLimitErrorSchema,
   recommendationQuizRequestSchema,
+  recommendationQuizResponseSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,
 } from "@library/contracts";
@@ -29,7 +29,7 @@ export const recommendationsRoutes: FastifyPluginAsync<
       summary: "Gera recomendações a partir do quiz de leitura",
       body: recommendationQuizRequestSchema,
       response: {
-        200: enrichedRecommendationResponseSchema,
+        200: recommendationQuizResponseSchema,
         400: validationErrorSchema,
         401: unauthenticatedErrorSchema,
         502: errorsSchema,
