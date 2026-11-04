@@ -1,4 +1,5 @@
 import {
+  type PointerEvent,
   type ReactNode,
   type SyntheticEvent,
   useEffect,
@@ -38,11 +39,16 @@ export function Dialog({
     onClose();
   }
 
+  function handleBackdropPointerDown(event: PointerEvent<HTMLDialogElement>) {
+    if (event.target === event.currentTarget) onClose();
+  }
+
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
       onCancel={handleCancel}
+      onPointerDown={handleBackdropPointerDown}
       className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] ${size === "compact" ? "max-w-md" : "max-w-xl"} overflow-y-auto rounded-dialog border border-border-default bg-background-canvas p-0 text-text-primary shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-[1px]`}
     >
       <div className="flex items-start justify-between gap-6 border-b border-border-default px-6 py-4">
