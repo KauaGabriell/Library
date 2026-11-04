@@ -79,6 +79,16 @@ export function BookOverview({ entry, onDeleteSuccess }: BookOverviewProps) {
             <dd className="mt-0.5 text-text-primary">
               {book.pageCount ?? "—"}
             </dd>
+            {book.pageCountSourceUrl && (
+              <a
+                className="mt-1 inline-block text-xs text-brand-primary underline"
+                href={book.pageCountSourceUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Fonte das páginas
+              </a>
+            )}
           </div>
           <div>
             <dt className="font-semibold tracking-[0.04em] text-text-secondary">
@@ -110,6 +120,16 @@ export function BookOverview({ entry, onDeleteSuccess }: BookOverviewProps) {
         <p className="mt-3 whitespace-pre-line font-interface text-[0.8rem] leading-[1.7] text-text-secondary sm:text-sm">
           {plainBookDescription(book.description)}
         </p>
+        {book.descriptionSourceUrl && (
+          <a
+            className="mt-3 inline-block font-interface text-xs text-brand-primary underline"
+            href={book.descriptionSourceUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Fonte da sinopse
+          </a>
+        )}
       </BookDetailsCard>
     </section>
   );

@@ -310,11 +310,21 @@ test("renders three recommendation cards with public book details", async ({
       "Uma história envolvente sobre escolhas e possibilidades.",
     ),
   ).toBeVisible();
-  await expect(
-    recommendations.getByRole("img", {
-      name: "Capa indisponível para A biblioteca da meia-noite",
-    }),
-  ).toHaveAttribute("src", /book-cover-placeholder\.jpg$/);
+  await expect(recommendations.getByRole("img")).toHaveCount(0);
+  await expect(recommendations.getByText("Sinopse indisponível")).toHaveCount(
+    0,
+  );
+  const searchLink = recommendations
+    .getByRole("article")
+    .first()
+    .getByRole("link", { name: /Pesquisar livro/ });
+  const externalUrl = new URL((await searchLink.getAttribute("href")) ?? "");
+  expect(externalUrl.origin).toBe("https://www.google.com");
+  expect(externalUrl.searchParams.get("q")).toBe(
+    "A biblioteca da meia-noite Matt Haig livro",
+  );
+  await expect(searchLink).toHaveAttribute("target", "_blank");
+  await expect(searchLink).toHaveAttribute("rel", /noopener/);
   expect(requestBodies[0]).toEqual({
     genres: ["FANTASY", "ROMANCE"],
     goal: "RELAX",
@@ -361,20 +371,38 @@ test("saves selected recommendation and isolates success to its card", async ({
     .filter({ hasText: "O oceano no fim do caminho" });
 
   await firstCard
-    .getByRole("button", { name: "Adicionar à biblioteca" })
+    .getByRole("button", { name: "Adicionar manualmente" })
     .click();
 
+  expect(libraryRequests).toHaveLength(0);
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue(
+    "A biblioteca da meia-noite",
+  );
+  await expect(dialog.getByLabel("Autores")).toHaveValue("Matt Haig");
+  await dialog.getByLabel("Descrição").fill("Sinopse preenchida pelo leitor.");
+  await dialog.getByLabel("URL da capa").fill("https://example.com/cover.jpg");
+  await dialog.getByLabel("Número de páginas").fill("240");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
   await expect(
     firstCard.getByRole("button", { name: "Na biblioteca · Quero ler" }),
   ).toBeDisabled();
   await expect(
-    secondCard.getByRole("button", { name: "Adicionar à biblioteca" }),
+    secondCard.getByRole("button", { name: "Adicionar manualmente" }),
   ).toBeEnabled();
   expect(libraryRequests).toEqual([
     {
       source: "MANUAL",
       title: "A biblioteca da meia-noite",
       authors: ["Matt Haig"],
+      description: "Sinopse preenchida pelo leitor.",
+      coverUrl: "https://example.com/cover.jpg",
+      pageCount: 240,
     },
   ]);
 });
@@ -422,13 +450,21 @@ test("retries a transient error when saving a recommendation", async ({
     .getByRole("article")
     .filter({ hasText: "A biblioteca da meia-noite" });
   await firstCard
-    .getByRole("button", { name: "Adicionar à biblioteca" })
+    .getByRole("button", { name: "Adicionar manualmente" })
     .click();
-  await expect(firstCard.getByRole("alert")).toContainText(
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await dialog.getByLabel("Número de páginas").fill("312");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText(
     "Não foi possível adicionar este livro agora.",
   );
 
-  await firstCard.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(dialog.getByLabel("Número de páginas")).toHaveValue("312");
+  await dialog.getByRole("button", { name: "Tentar novamente" }).click();
 
   await expect(
     firstCard.getByRole("button", { name: "Na biblioteca · Quero ler" }),
@@ -479,4 +515,44 @@ test("keeps the draft and retries the same payload after provider failure", asyn
   await expect(
     page.getByRole("checkbox", { name: "Fantasia", exact: true }),
   ).not.toBeChecked();
+});
+
+test("canceling manual registration does not save and resets defaults when reopened", async ({
+  page,
+}) => {
+  let saves = 0;
+  await openQuiz(page);
+  await page.route(`${apiUrl}/recommendations`, (route) =>
+    route.fulfill({ status: 200, json: recommendationResponse }),
+  );
+  await page.route(`${apiUrl}/library`, (route) => {
+    saves++;
+    return route.fulfill({
+      status: 201,
+      json: savedLibraryEntry("A biblioteca da meia-noite"),
+    });
+  });
+  await completeQuiz(page);
+  const card = page
+    .getByRole("article")
+    .filter({ hasText: "A biblioteca da meia-noite" });
+  await card.getByRole("button", { name: "Adicionar manualmente" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await dialog.getByLabel("Título", { exact: true }).fill("Outro título");
+  await dialog.getByLabel("Autores").fill("Outro autor");
+  await dialog.getByRole("button", { name: "Cancelar" }).click();
+  expect(saves).toBe(0);
+  await card.getByRole("button", { name: "Adicionar manualmente" }).click();
+  await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue(
+    "A biblioteca da meia-noite",
+  );
+  await expect(dialog.getByLabel("Autores")).toHaveValue("Matt Haig");
+  await dialog.getByLabel("Número de páginas").fill("0");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+  expect(saves).toBe(0);
+  await expect(dialog).toBeVisible();
 });

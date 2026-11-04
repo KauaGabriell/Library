@@ -1,120 +1,121 @@
-import type { BookRecommendation } from "@library/contracts";
-import { BookPlus, Check, RotateCcw, Sparkles } from "lucide-react";
-import { useId } from "react";
+import type {
+  BookRecommendation,
+  LibraryEntryCreateInput,
+} from "@library/contracts";
+import { BookPlus, Check, ExternalLink, Sparkles } from "lucide-react";
+import { useId, useState } from "react";
 import { useAddLibraryEntry } from "../../hooks/useLibrary";
-import { bookCoverFallbackUrl } from "../../lib/bookCover";
+import { ManualBookFormDialog } from "../search/ManualBookFormDialog";
 import { Button } from "../ui/Button";
 
-type RecommendationResultCardProps = {
-  recommendation: BookRecommendation;
-};
+type ManualBookInput = Extract<LibraryEntryCreateInput, { source: "MANUAL" }>;
+type RecommendationResultCardProps = { recommendation: BookRecommendation };
 
 export function RecommendationResultCard({
   recommendation,
 }: RecommendationResultCardProps) {
   const titleId = useId();
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const saveMutation = useAddLibraryEntry();
   const { title, author, justification } = recommendation;
+  const searchUrl = new URL("https://www.google.com/search");
+  searchUrl.searchParams.set("q", [title, author, "livro"].join(" "));
 
-  function handleSave() {
+  function openManualForm() {
     if (saveMutation.isPending || saveMutation.isSuccess) return;
+    saveMutation.reset();
+    setManualDialogOpen(true);
+  }
 
-    saveMutation.mutate({
-      source: "MANUAL",
-      title: title.trim(),
-      authors: [author.trim()],
+  function closeManualForm() {
+    if (saveMutation.isPending) return;
+    setManualDialogOpen(false);
+    saveMutation.reset();
+  }
+
+  function saveManualBook(input: ManualBookInput) {
+    if (saveMutation.isPending || saveMutation.isSuccess) return;
+    saveMutation.mutate(input, {
+      onSuccess: () => setManualDialogOpen(false),
     });
   }
 
-  function handleRetry() {
+  function retrySave() {
     const previousInput = saveMutation.variables;
-    if (previousInput && !saveMutation.isPending) {
-      saveMutation.mutate(previousInput);
-    }
+    if (previousInput?.source === "MANUAL") saveManualBook(previousInput);
   }
 
   return (
     <article
       aria-labelledby={titleId}
-      className="flex min-w-0 flex-col border border-border-default/60 bg-background-canvas p-4 shadow-[0_1px_3px_rgba(47,36,17,0.035)]"
+      className="flex min-w-0 flex-col rounded-field border border-border-default bg-background-canvas p-5 sm:p-6"
     >
-      <div className="mx-auto mb-4 aspect-3/4 w-full max-w-56 overflow-hidden rounded-field bg-background-surface shadow-sm">
-        <img
-          src={bookCoverFallbackUrl}
-          alt={`Capa indisponível para ${title}`}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
-      </div>
-
-      <div className="flex flex-1 flex-col">
-        <h2
-          id={titleId}
-          className="wrap-break-word font-heading text-xl leading-tight text-text-primary"
-        >
-          {title}
-        </h2>
-        <p className="mt-1 wrap-break-word font-interface text-sm text-text-secondary">
-          {author}
+      <p className="mb-5 font-interface text-xs font-semibold uppercase tracking-widest text-brand-primary">
+        Sugestão de leitura
+      </p>
+      <h2
+        id={titleId}
+        className="wrap-break-word font-heading text-2xl leading-tight text-text-primary"
+      >
+        {title}
+      </h2>
+      <p className="mt-2 wrap-break-word font-interface text-sm text-text-secondary">
+        {author}
+      </p>
+      <section className="mt-6 flex-1 border-t border-border-default/60 pt-5">
+        <h3 className="flex items-center gap-2 font-interface text-xs font-semibold text-brand-primary">
+          <Sparkles aria-hidden="true" className="size-4 shrink-0" />
+          Por que combina com você
+        </h3>
+        <p className="mt-3 wrap-break-word font-interface text-sm leading-relaxed text-text-secondary">
+          {justification}
         </p>
-
-        <section className="mt-4 flex-1 border-l-2 border-brand-primary/45 bg-background-surface/60 px-3 py-2">
-          <h3 className="flex items-center gap-1.5 font-interface text-xs font-semibold text-brand-primary">
-            <Sparkles aria-hidden="true" className="size-3.5 shrink-0" />
-            Por que combina com você
-          </h3>
-          <p className="mt-2 wrap-break-word font-interface text-sm leading-relaxed text-text-secondary">
-            {justification}
+      </section>
+      <div className="mt-6 flex flex-col gap-3">
+        <a
+          href={searchUrl.toString()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-field border border-border-control px-3 py-2 font-interface text-sm text-brand-primary transition-colors hover:bg-background-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none"
+        >
+          Pesquisar livro
+          <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
+          <span className="sr-only"> (abre em nova aba)</span>
+        </a>
+        <Button
+          type="button"
+          disabled={saveMutation.isPending || saveMutation.isSuccess}
+          onClick={openManualForm}
+          className="min-h-11 w-full gap-2 rounded-field px-3 text-sm"
+        >
+          {saveMutation.isSuccess ? (
+            <Check aria-hidden="true" className="size-4 shrink-0" />
+          ) : (
+            <BookPlus aria-hidden="true" className="size-4 shrink-0" />
+          )}
+          {saveMutation.isSuccess
+            ? "Na biblioteca · Quero ler"
+            : "Adicionar manualmente"}
+        </Button>
+        {saveMutation.isSuccess && (
+          <p role="status" aria-live="polite" className="sr-only">
+            {saveMutation.variables?.source === "MANUAL"
+              ? saveMutation.variables.title
+              : title}{" "}
+            foi adicionado à sua biblioteca como Quero ler.
           </p>
-        </section>
-
-        <div className="mt-4">
-          <Button
-            type="button"
-            loading={saveMutation.isPending}
-            disabled={saveMutation.isPending || saveMutation.isSuccess}
-            onClick={handleSave}
-            className="min-h-11 w-full gap-2 rounded-field px-2 text-xs leading-tight"
-          >
-            {saveMutation.isSuccess ? (
-              <Check aria-hidden="true" className="size-4 shrink-0" />
-            ) : (
-              <BookPlus aria-hidden="true" className="size-4 shrink-0" />
-            )}
-            <span>
-              {saveMutation.isSuccess
-                ? "Na biblioteca · Quero ler"
-                : "Adicionar à biblioteca"}
-            </span>
-          </Button>
-
-          {saveMutation.isSuccess && (
-            <p role="status" aria-live="polite" className="sr-only">
-              {title} foi adicionado à sua biblioteca como Quero ler.
-            </p>
-          )}
-
-          {saveMutation.isError && (
-            <div className="mt-3 text-center">
-              <p
-                role="alert"
-                className="text-xs leading-relaxed text-feedback-error"
-              >
-                {saveMutation.error.message}
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleRetry}
-                className="mt-2 min-h-11 w-full text-xs"
-              >
-                <RotateCcw aria-hidden="true" className="size-3.5" />
-                Tentar novamente
-              </Button>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+      <ManualBookFormDialog
+        open={manualDialogOpen}
+        initialTitle={title}
+        initialAuthors={[author]}
+        pending={saveMutation.isPending}
+        error={saveMutation.isError ? saveMutation.error.message : undefined}
+        onClose={closeManualForm}
+        onSubmit={saveManualBook}
+        onRetry={retrySave}
+      />
     </article>
   );
 }

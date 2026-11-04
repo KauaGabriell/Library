@@ -6,6 +6,8 @@ const inputVariants = tv({
   variants: {
     variant: {
       primary: "bg-[var(--color-background-surface)]",
+      modal:
+        "rounded-field bg-[var(--color-background-surface)] shadow-[0_1px_3px_rgba(47,36,17,0.04)]",
     },
     hasError: {
       true: "border-b-[color:var(--color-feedback-error)] focus-visible:border-b-[color:var(--color-feedback-error)]",
