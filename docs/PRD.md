@@ -94,8 +94,8 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 1. Usuário responde sete perguntas obrigatórias do quiz: gênero, objetivo, tamanho, ritmo, humor, temas e restrições. Campo opcional de contexto adicional aceita até 500 caracteres e não conta como resposta.
 2. API envia somente essas preferências do quiz ao Gemini.
 3. Provider retorna três itens estruturados: título, autor e justificativa.
-4. API valida schema, remove duplicatas e enriquece itens no Google Books.
-5. Web mostra as opções ou estado recuperável de indisponibilidade; usuário pode salvar uma sugestão.
+4. API valida schema e exige três sugestões distintas por título e autor, sem consultar o Google Books.
+5. Web mostra título, autor, justificativa e capa padrão. Ao salvar uma sugestão, usa o cadastro manual existente, sem ID Google; livros manuais repetidos são permitidos.
 
 ### Histórias de usuário
 
@@ -194,7 +194,7 @@ Monorepo `pnpm` com três unidades: `apps/web` (React/Vite), `apps/api` (Fastify
 | Notes | conteúdo privado | comandos → Note | Library, Prisma |
 | Dashboard | agregações pessoais | sessão → métricas | Prisma |
 | Reading Goals | meta anual e progresso calculado | comando/sessão → ReadingGoal e resumo | Prisma, Library |
-| Recommendations | quiz e enriquecimento | QuizRequest → 3 recomendações | Gemini, Catalog |
+| Recommendations | quiz e sugestões estruturadas | QuizRequest → 3 recomendações | Gemini |
 
 ### Entidades e ownership
 
@@ -291,7 +291,7 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 
 - **Saída:** objeto `{ recommendations }` com exatamente três itens únicos por `title` e `author`, após trim, redução de espaços repetidos e conversão para minúsculas. Cada item contém `title`, `author` e `justification`.
 - **Validação:** Zod rejeita quantidade diferente de três, campos vazios, duplicatas e texto fora do contrato.
-- **Enriquecimento:** Catalog busca título/autor no Google Books para capa/metadados antes da resposta final.
+- **Catálogo independente:** recomendações não consultam o Google Books. A saída contém somente título, autor e justificativa; não pressupõe confirmação de existência ou de metadados pelo catálogo.
 
 ### Qualidade, monitoramento e fallback
 
@@ -356,7 +356,7 @@ IA sugere leitura; não aprova conteúdo, não toma decisão irreversível, não
 |---|---|---|---|
 | Fundação | executar com segurança | workspace, CI, DB, contracts | clone limpo passa pipeline |
 | Núcleo privado | registrar leitura | auth, catálogo, biblioteca, página atual, notes, dashboard e meta anual | CRUD isolado por owner e meta calculada corretamente |
-| Descoberta | recomendar | quiz, Gemini, enriquecimento | 3 sugestões/fallback testado |
+| Descoberta | recomendar | quiz, Gemini, sugestões e cadastro manual | 3 sugestões/fallback testado |
 | Release | publicar demo | hardening, docs, deploy | smoke público aprovado |
 | Futuro social | interação opcional | profile, visibility, follow, activity | novo PRD e ADR aprovados |
 
