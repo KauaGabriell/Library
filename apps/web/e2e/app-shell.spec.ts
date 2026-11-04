@@ -50,11 +50,48 @@ test.describe("Shell responsivo", () => {
       await expect(navigation).toHaveCount(1);
       await expect(navigation).toBeHidden();
       await expect(page.getByRole("banner")).toBeVisible();
-      await page.getByRole("button", { name: "Abrir menu de navegação" }).click();
+      await page
+        .getByRole("button", { name: "Abrir menu de navegação" })
+        .click();
 
       await expect(navigation).toBeVisible();
       await expect(page.getByRole("button", { name: "Sair" })).toBeEnabled();
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width);
     });
   }
+
+  test("mostra o quiz de IA na navegação desktop e mobile", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/dashboard");
+
+    const quizLink = page.getByRole("link", {
+      name: "Quiz de IA",
+      exact: true,
+    });
+    await expect(quizLink).toHaveCount(1);
+    await expect(quizLink).toBeVisible();
+    await quizLink.click();
+    await expect(page).toHaveURL(/\/recommendations\/quiz$/);
+    await expect(quizLink).toHaveAttribute("aria-current", "page");
+
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.getByRole("button", { name: "Abrir menu de navegação" }).click();
+    await expect(quizLink).toBeVisible();
+    await quizLink.click();
+
+    await expect(page).toHaveURL(/\/recommendations\/quiz$/);
+    await expect(
+      page.getByRole("button", { name: "Abrir menu de navegação" }),
+    ).toBeVisible();
+    await expect(
+      page.locator('nav[aria-label="Navegação principal"]'),
+    ).toBeHidden();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(320);
+  });
 });

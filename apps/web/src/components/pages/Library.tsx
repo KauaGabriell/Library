@@ -1,18 +1,22 @@
-import type { ReadingState } from "@library/contracts";
+import type { LibraryEntryCreateInput, ReadingState } from "@library/contracts";
+import { Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { useDebouncedValue } from "../../hooks/useDebounce";
-import { useLibraryEntries } from "../../hooks/useLibrary";
+import { useAddLibraryEntry, useLibraryEntries } from "../../hooks/useLibrary";
 import { LibraryCardGrid } from "../library/LibraryCardGrid";
 import { LibraryPagination } from "../library/LibraryPagination";
 import { LibrarySkeleton } from "../library/LibrarySkeleton";
 import { LibraryTable } from "../library/LibraryTable";
 import { LibraryToolbar, type LibraryView } from "../library/LibraryToolbar";
+import { ManualBookFormDialog } from "../search/ManualBookFormDialog";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 
 const PAGE_SIZE = 8;
+
+type ManualBookInput = Extract<LibraryEntryCreateInput, { source: "MANUAL" }>;
 
 const EMPTY_STATUS_COUNTS: Record<ReadingState, number> = {
   WANT_TO_READ: 0,
@@ -21,13 +25,13 @@ const EMPTY_STATUS_COUNTS: Record<ReadingState, number> = {
 };
 
 export function Library() {
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ReadingState>();
   const [sortBy, setSortBy] = useState<"updatedAt" | "createdAt">("updatedAt");
   const [page, setPage] = useState(1);
   const [view, setView] = useState<LibraryView>("table");
-  const [deleteStatusMessage, setDeleteStatusMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const debouncedSearch = useDebouncedValue(search, 300).trim();
   const isSearchTooShort = debouncedSearch.length === 1;
@@ -39,6 +43,7 @@ export function Library() {
     sortBy,
   };
   const libraryQuery = useLibraryEntries(query, !isSearchTooShort);
+  const addLibraryEntryMutation = useAddLibraryEntry();
 
   useEffect(() => {
     if (libraryQuery.data && libraryQuery.data.page !== page) {
@@ -62,8 +67,41 @@ export function Library() {
   }
 
   function handleDeleteSuccess(bookTitle: string) {
-    setDeleteStatusMessage(`“${bookTitle}” foi removido da biblioteca.`);
+    setStatusMessage(`“${bookTitle}” foi removido da biblioteca.`);
     window.requestAnimationFrame(() => headingRef.current?.focus());
+  }
+
+  function openManualDialog() {
+    addLibraryEntryMutation.reset();
+    setStatusMessage("");
+    setManualDialogOpen(true);
+  }
+
+  function closeManualDialog() {
+    if (addLibraryEntryMutation.isPending) return;
+
+    addLibraryEntryMutation.reset();
+    setManualDialogOpen(false);
+  }
+
+  function handleManualBookCreated(title: string) {
+    setManualDialogOpen(false);
+    setStatusMessage(`${title} foi adicionado à biblioteca.`);
+  }
+
+  function submitManualBook(input: ManualBookInput) {
+    addLibraryEntryMutation.mutate(input, {
+      onSuccess: () => handleManualBookCreated(input.title),
+    });
+  }
+
+  function retryManualBookCreation() {
+    const previousInput = addLibraryEntryMutation.variables;
+    if (previousInput?.source !== "MANUAL") return;
+
+    addLibraryEntryMutation.mutate(previousInput, {
+      onSuccess: () => handleManualBookCreated(previousInput.title),
+    });
   }
 
   const result = libraryQuery.data;
@@ -87,11 +125,28 @@ export function Library() {
             Minha biblioteca
           </h1>
           <p role="status" aria-live="polite" className="sr-only">
-            {deleteStatusMessage}
+            {statusMessage}
           </p>
           <p className="mt-2 font-interface text-sm text-text-secondary">
             Organize seus livros e acompanhe cada leitura.
           </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link
+            to="/search"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-field border border-border-control bg-background-surface px-4 py-2 text-label-md text-text-primary transition-colors hover:bg-background-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary motion-reduce:transition-none sm:w-auto"
+          >
+            <Search aria-hidden="true" className="size-4" />
+            Buscar no catálogo
+          </Link>
+          <Button
+            type="button"
+            onClick={openManualDialog}
+            className="w-full justify-center gap-2 sm:w-auto"
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            Adicionar manualmente
+          </Button>
         </div>
       </header>
 
@@ -105,7 +160,6 @@ export function Library() {
         onStatusChange={handleStatusChange}
         onSortChange={handleSortChange}
         onViewChange={setView}
-        onAddBook={() => navigate("/search")}
       />
 
       {isSearchTooShort ? (
@@ -122,15 +176,7 @@ export function Library() {
       ) : hasNoLibraryEntries ? (
         <EmptyState
           title="Sua biblioteca começa com um livro"
-          description="Busque no catálogo e adicione títulos à sua biblioteca pessoal."
-          action={
-            <Link
-              to="/search"
-              className="inline-flex min-h-11 items-center rounded-field bg-brand-primary px-4 py-2 text-label-md text-background-canvas hover:bg-brand-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
-            >
-              Adicionar livro
-            </Link>
-          }
+          description="Busque no catálogo ou cadastre um livro manualmente para começar sua biblioteca pessoal."
         />
       ) : hasNoFilteredResults ? (
         <EmptyState
@@ -180,6 +226,22 @@ export function Library() {
           />
         </>
       ) : null}
+
+      <ManualBookFormDialog
+        open={manualDialogOpen}
+        initialTitle=""
+        pending={addLibraryEntryMutation.isPending}
+        error={
+          addLibraryEntryMutation.isError
+            ? addLibraryEntryMutation.error.message
+            : undefined
+        }
+        onClose={closeManualDialog}
+        onSubmit={submitManualBook}
+        onRetry={
+          addLibraryEntryMutation.isError ? retryManualBookCreation : undefined
+        }
+      />
     </div>
   );
 }

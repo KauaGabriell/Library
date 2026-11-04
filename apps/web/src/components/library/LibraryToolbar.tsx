@@ -1,5 +1,5 @@
 import type { ReadingState } from "@library/contracts";
-import { Grid2X2, List, Plus } from "lucide-react";
+import { Grid2X2, List } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
@@ -18,7 +18,6 @@ type LibraryToolbarProps = {
   onStatusChange: (status?: ReadingState) => void;
   onSortChange: (sortBy: "updatedAt" | "createdAt") => void;
   onViewChange: (view: LibraryView) => void;
-  onAddBook: () => void;
 };
 
 export function LibraryToolbar({
@@ -31,7 +30,6 @@ export function LibraryToolbar({
   onStatusChange,
   onSortChange,
   onViewChange,
-  onAddBook,
 }: LibraryToolbarProps) {
   return (
     <section
@@ -82,42 +80,36 @@ export function LibraryToolbar({
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 lg:col-span-3">
-        <div className="hidden items-center gap-1 lg:flex">
-          <Button
-            type="button"
-            variant="secondary"
-            aria-label="Visualização em tabela"
-            aria-pressed={view === "table"}
-            onClick={() => onViewChange("table")}
-            className={
-              view === "table"
-                ? "border-brand-primary text-brand-primary"
-                : "px-3"
-            }
-          >
-            <List aria-hidden="true" className="size-4" />
-            Tabela
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            aria-label="Visualização em cards"
-            aria-pressed={view === "cards"}
-            onClick={() => onViewChange("cards")}
-            className={
-              view === "cards"
-                ? "border-brand-primary text-brand-primary"
-                : "px-3"
-            }
-          >
-            <Grid2X2 aria-hidden="true" className="size-4" />
-            Cards
-          </Button>
-        </div>
-        <Button type="button" onClick={onAddBook} className="gap-2">
-          <Plus aria-hidden="true" className="size-4" />
-          Adicionar livro
+      <div className="hidden items-center gap-1 lg:col-span-3 lg:flex">
+        <Button
+          type="button"
+          variant="secondary"
+          aria-label="Visualização em tabela"
+          aria-pressed={view === "table"}
+          onClick={() => onViewChange("table")}
+          className={
+            view === "table"
+              ? "border-brand-primary text-brand-primary"
+              : "px-3"
+          }
+        >
+          <List aria-hidden="true" className="size-4" />
+          Tabela
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          aria-label="Visualização em cards"
+          aria-pressed={view === "cards"}
+          onClick={() => onViewChange("cards")}
+          className={
+            view === "cards"
+              ? "border-brand-primary text-brand-primary"
+              : "px-3"
+          }
+        >
+          <Grid2X2 aria-hidden="true" className="size-4" />
+          Cards
         </Button>
       </div>
     </section>

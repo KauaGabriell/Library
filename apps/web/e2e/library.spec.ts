@@ -9,12 +9,43 @@ const publicUser = {
   avatarUrl: null,
 };
 
+type EntryFixture = {
+  id: string;
+  status: string;
+  currentPage: number;
+  progressPercent: number | null;
+  rating: number | null;
+  review: string | null;
+  book: {
+    googleBooksId: string | null;
+    title: string;
+    authors: string[];
+    description: string | null;
+    coverUrl: string | null;
+    language: string | null;
+    pageCount: number | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ManualBookPayload = {
+  source: "MANUAL";
+  title: string;
+  authors: string[];
+  description?: string;
+  coverUrl?: string;
+  language?: string;
+  pageCount?: number;
+};
+
 function entry(
   id: number,
   title = `Livro ${id}`,
   status = "READING",
   rating: number | null = null,
-) {
+  bookOverrides: Partial<EntryFixture["book"]> = {},
+): EntryFixture {
   return {
     id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
     status,
@@ -30,6 +61,7 @@ function entry(
       coverUrl: null as string | null,
       language: "pt-BR",
       pageCount: 100,
+      ...bookOverrides,
     },
     createdAt: "2026-01-01T12:00:00.000Z",
     updatedAt: "2026-01-02T12:00:00.000Z",
@@ -43,7 +75,7 @@ function listResponse({
   pageSize = 8,
   countsByStatus = { WANT_TO_READ: 2, READING: 3, READ: 1 },
 }: {
-  items: ReturnType<typeof entry>[];
+  items: EntryFixture[];
   page?: number;
   totalItems?: number;
   pageSize?: number;
@@ -80,6 +112,79 @@ async function mockLibrary(
 
     await handler(route, new URL(route.request().url()));
   });
+}
+
+function manualEntry(id: number, payload: ManualBookPayload): EntryFixture {
+  const created = entry(id, payload.title, "WANT_TO_READ", null, {
+    googleBooksId: null,
+    authors: payload.authors,
+    description: payload.description ?? null,
+    coverUrl: payload.coverUrl ?? null,
+    language: payload.language ?? null,
+    pageCount: payload.pageCount ?? null,
+  });
+
+  return { ...created, currentPage: 0, progressPercent: null };
+}
+
+async function mockManualLibrary(
+  page: Page,
+  onCreate?: (
+    route: Route,
+    payload: ManualBookPayload,
+    entries: EntryFixture[],
+  ) => Promise<void>,
+) {
+  const entries: EntryFixture[] = [];
+  const requests: ManualBookPayload[] = [];
+
+  await page.route(`${apiUrl}/library**`, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+
+    if (url.pathname !== "/library") {
+      await route.continue();
+      return;
+    }
+
+    if (request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        json: listResponse({
+          items: [...entries],
+          totalItems: entries.length,
+          countsByStatus: {
+            WANT_TO_READ: entries.filter(
+              (item) => item.status === "WANT_TO_READ",
+            ).length,
+            READING: entries.filter((item) => item.status === "READING").length,
+            READ: entries.filter((item) => item.status === "READ").length,
+          },
+        }),
+      });
+      return;
+    }
+
+    if (request.method() === "POST") {
+      const payload = request.postDataJSON() as ManualBookPayload;
+      requests.push(payload);
+
+      if (onCreate) {
+        await onCreate(route, payload, entries);
+        return;
+      }
+
+      await route.fulfill({
+        status: 500,
+        json: { code: "INTERNAL_ERROR", message: "Criação não simulada." },
+      });
+      return;
+    }
+
+    await route.continue();
+  });
+
+  return { entries, requests };
 }
 
 test("searches, filters, sorts, paginates, and switches views from shared server data", async ({
@@ -446,7 +551,7 @@ test("shows empty library and links to catalog search", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Sua biblioteca começa com um livro" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Adicionar livro" }).click();
+  await page.getByRole("link", { name: "Buscar no catálogo" }).click();
   await expect(page).toHaveURL(/\/search$/);
 });
 
@@ -507,6 +612,242 @@ test("shows filtered-empty and recoverable loading error states", async ({
   await expect(
     page.getByRole("heading", { name: "Nenhum resultado encontrado" }),
   ).toBeVisible();
+});
+
+test("adds a manual book from the library and refreshes the list", async ({
+  page,
+}) => {
+  await mockSession(page);
+  const { requests } = await mockManualLibrary(
+    page,
+    async (route, payload, entries) => {
+      const created = manualEntry(101, payload);
+      entries.push(created);
+      await route.fulfill({ status: 201, json: created });
+    },
+  );
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await dialog.getByLabel("Título", { exact: true }).fill("O Nome do Vento");
+  await dialog
+    .getByLabel("Descrição")
+    .fill("Um músico busca respostas sobre seu passado.");
+  await dialog
+    .getByLabel("URL da capa")
+    .fill("https://covers.example.test/o-nome-do-vento.jpg");
+  await dialog.getByLabel("Idioma").fill("pt-BR");
+  await dialog.getByLabel("Número de páginas").fill("662");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole("link", { name: "O Nome do Vento", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "O Nome do Vento foi adicionado à biblioteca.",
+    }),
+  ).toBeVisible();
+  expect(requests).toEqual([
+    {
+      source: "MANUAL",
+      title: "O Nome do Vento",
+      authors: [],
+      description: "Um músico busca respostas sobre seu passado.",
+      coverUrl: "https://covers.example.test/o-nome-do-vento.jpg",
+      language: "pt-BR",
+      pageCount: 662,
+    },
+  ]);
+});
+
+test("rejects a whitespace-only title without posting", async ({ page }) => {
+  await mockSession(page);
+  const { requests } = await mockManualLibrary(page);
+
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  const title = dialog.getByLabel("Título", { exact: true });
+  await title.fill("   ");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(title).toHaveAttribute("aria-invalid", "true");
+  await expect(title).toBeFocused();
+  expect(requests).toHaveLength(0);
+});
+
+test("retries a failed manual create without losing form values", async ({
+  page,
+}) => {
+  await mockSession(page);
+  let attempts = 0;
+  const { entries, requests } = await mockManualLibrary(
+    page,
+    async (route, payload, createdEntries) => {
+      attempts += 1;
+      if (attempts === 1) {
+        await route.fulfill({
+          status: 500,
+          json: { code: "INTERNAL_ERROR", message: "Falha temporária." },
+        });
+        return;
+      }
+
+      const created = manualEntry(102, payload);
+      createdEntries.push(created);
+      await route.fulfill({ status: 201, json: created });
+    },
+  );
+
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await dialog.getByLabel("Título", { exact: true }).fill("A Vida Invisível");
+  await dialog.getByLabel("Autores").fill("Martha Wells");
+  await dialog.getByLabel("Descrição").fill("Descrição para preservar.");
+  await dialog
+    .getByLabel("URL da capa")
+    .fill("https://covers.example.test/vida-invisivel.jpg");
+  await dialog.getByLabel("Idioma").fill("pt-BR");
+  await dialog.getByLabel("Número de páginas").fill("224");
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+
+  await expect(dialog.getByRole("alert")).toContainText("Falha temporária.");
+  await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue(
+    "A Vida Invisível",
+  );
+  await expect(dialog.getByLabel("Autores")).toHaveValue("Martha Wells");
+  await expect(dialog.getByLabel("Descrição")).toHaveValue(
+    "Descrição para preservar.",
+  );
+  await expect(dialog.getByLabel("URL da capa")).toHaveValue(
+    "https://covers.example.test/vida-invisivel.jpg",
+  );
+  await expect(dialog.getByLabel("Idioma")).toHaveValue("pt-BR");
+  await expect(dialog.getByLabel("Número de páginas")).toHaveValue("224");
+  await dialog.getByRole("button", { name: "Tentar novamente" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole("link", { name: "A Vida Invisível", exact: true }),
+  ).toBeVisible();
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toEqual(requests[0]);
+  expect(entries).toHaveLength(1);
+});
+
+test("allows repeated manual books with the same title", async ({ page }) => {
+  await mockSession(page);
+  let nextId = 103;
+  const { entries } = await mockManualLibrary(
+    page,
+    async (route, payload, createdEntries) => {
+      const created = manualEntry(nextId++, payload);
+      createdEntries.push(created);
+      await route.fulfill({ status: 201, json: created });
+    },
+  );
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/library");
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+    const dialog = page.getByRole("dialog", {
+      name: "Adicionar livro manualmente",
+    });
+    await dialog.getByLabel("Título", { exact: true }).fill("Livro Repetido");
+    await dialog
+      .getByRole("button", { name: "Adicionar livro", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(() => entries.length).toBe(attempt + 1);
+  }
+
+  const table = page.getByRole("table", { name: "Livros na biblioteca" });
+  await expect(
+    table.getByRole("row").filter({ hasText: "Livro Repetido" }),
+  ).toHaveCount(2);
+  expect(new Set(entries.map((item) => item.id)).size).toBe(2);
+});
+
+test("canceling manual creation sends no request and reopening clears the draft", async ({
+  page,
+}) => {
+  await mockSession(page);
+  const { requests } = await mockManualLibrary(page);
+
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await dialog.getByLabel("Título", { exact: true }).fill("Rascunho local");
+  await dialog.getByLabel("Autores").fill("Autor de teste");
+  await dialog.getByLabel("Descrição").fill("Não deve persistir.");
+  await dialog
+    .getByLabel("URL da capa")
+    .fill("https://covers.example.test/rascunho.jpg");
+  await dialog.getByLabel("Idioma").fill("pt-BR");
+  await dialog.getByLabel("Número de páginas").fill("100");
+  await dialog.getByRole("button", { name: "Cancelar" }).click();
+
+  expect(requests).toHaveLength(0);
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+  await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue("");
+  await expect(dialog.getByLabel("Autores")).toHaveValue("");
+  await expect(dialog.getByLabel("Descrição")).toHaveValue("");
+  await expect(dialog.getByLabel("URL da capa")).toHaveValue("");
+  await expect(dialog.getByLabel("Idioma")).toHaveValue("");
+  await expect(dialog.getByLabel("Número de páginas")).toHaveValue("");
+});
+
+test("keeps manual and catalog add actions usable at 320px", async ({
+  page,
+}) => {
+  await mockSession(page);
+  await mockManualLibrary(page);
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/library");
+
+  const catalogLink = page.getByRole("link", { name: "Buscar no catálogo" });
+  const manualButton = page.getByRole("button", {
+    name: "Adicionar manualmente",
+  });
+  await expect(catalogLink).toBeVisible();
+  await expect(catalogLink).toHaveAttribute("href", "/search");
+  await expect(manualButton).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+
+  await manualButton.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await expect(dialog).toBeVisible();
+  expect((await dialog.boundingBox())?.width).toBeLessThanOrEqual(288);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
 });
 
 test("updates status, retries a failed update, confirms deletion, and recovers from delete failure", async ({

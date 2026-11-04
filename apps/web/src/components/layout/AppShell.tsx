@@ -1,6 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
-import { BookOpen, LayoutGrid, LogOut, Menu, Search, X } from "lucide-react";
+import {
+  BookOpen,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { api } from "../../lib/api";
@@ -11,6 +19,7 @@ const navigationItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/search", label: "Buscar livros", icon: Search },
   { href: "/library", label: "Minha biblioteca", icon: BookOpen },
+  { href: "/recommendations/quiz", label: "Quiz de IA", icon: Sparkles },
 ];
 
 type AppShellProps = {
