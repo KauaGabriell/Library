@@ -23,11 +23,17 @@ export function useRecommendationQuiz() {
     }));
   }
 
+  function resetQuiz() {
+    setDraft({});
+    setCurrentStepIndex(0);
+  }
+
   return {
     draft,
     currentStepIndex,
     setCurrentStepIndex,
     updateAnswer,
     updateAdditionalContext,
+    resetQuiz,
   };
 }
