@@ -95,7 +95,8 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 2. API envia somente essas preferências do quiz ao Gemini.
 3. Provider retorna três itens estruturados: título, autor e justificativa.
 4. API valida schema e exige três sugestões distintas por título e autor, sem consultar o Google Books.
-5. Web mostra título, autor, justificativa e capa padrão. Ao salvar uma sugestão, usa o cadastro manual existente, sem ID Google; livros manuais repetidos são permitidos.
+5. Web mostra três cards textuais com título, autor e justificativa, sem capa genérica ou metadados indisponíveis. “Pesquisar livro” abre uma busca Google por título e autor em nova aba, sem enviar respostas do quiz.
+6. “Adicionar manualmente” abre o formulário compartilhado com título e autor preenchidos e editáveis. Usuário pode complementar sinopse, URL da capa, idioma e páginas; nada é salvo até confirmar. URL de imagem é suportada, upload de arquivo fica fora deste fluxo. Livros manuais repetidos são permitidos.
 
 ### Histórias de usuário
 
