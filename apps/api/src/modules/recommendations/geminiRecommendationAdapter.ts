@@ -7,8 +7,10 @@ import {
   recommendationQuizRequestSchema,
   recommendationQuizResponseSchema,
 } from "@library/contracts";
-import { AppError } from "../../errors/appError";
-import type { RecommendationProvider } from "./recommendationProvider";
+import {
+  type RecommendationProvider,
+  RecommendationProviderError,
+} from "./recommendationProvider";
 
 type GeminiClient = Pick<GoogleGenAI, "models">;
 
@@ -51,14 +53,6 @@ const recommendationResponseJsonSchema = {
   additionalProperties: false,
 } as const;
 
-function createRecommendationIntegrationError() {
-  return new AppError(
-    "Não foi possível gerar recomendações",
-    502,
-    "INTEGRATION_ERROR",
-  );
-}
-
 export function createGeminiRecommendationProvider({
   client,
   model,
@@ -71,8 +65,11 @@ export function createGeminiRecommendationProvider({
     ): Promise<RecommendationQuizResponse> {
       const preferences = recommendationQuizRequestSchema.parse(answers);
 
+      let response: Awaited<
+        ReturnType<GeminiClient["models"]["generateContent"]>
+      >;
       try {
-        const response = await client.models.generateContent({
+        response = await client.models.generateContent({
           model,
           contents: JSON.stringify(preferences),
           config: {
@@ -83,15 +80,28 @@ export function createGeminiRecommendationProvider({
             abortSignal: AbortSignal.timeout(timeoutMs),
           },
         });
-
-        if (!response.text) throw createRecommendationIntegrationError();
-
-        return recommendationQuizResponseSchema.parse(
-          JSON.parse(response.text),
-        );
       } catch {
-        throw createRecommendationIntegrationError();
+        throw new RecommendationProviderError("provider_failure");
       }
+
+      if (!response.text) {
+        throw new RecommendationProviderError("invalid_response");
+      }
+
+      let responseData: unknown;
+      try {
+        responseData = JSON.parse(response.text);
+      } catch {
+        throw new RecommendationProviderError("invalid_response");
+      }
+
+      const parsedResponse =
+        recommendationQuizResponseSchema.safeParse(responseData);
+      if (!parsedResponse.success) {
+        throw new RecommendationProviderError("invalid_response");
+      }
+
+      return parsedResponse.data;
     },
   };
 }

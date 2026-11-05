@@ -5,6 +5,7 @@ import type {
 } from "@library/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { createGeminiRecommendationProvider } from "../geminiRecommendationAdapter";
+import type { RecommendationProviderFailureKind } from "../recommendationProvider";
 
 type GeminiClient = Pick<GoogleGenAI, "models">;
 
@@ -54,11 +55,16 @@ function createProvider(response: unknown, timeoutMs?: number) {
   return { provider, generateContent };
 }
 
-async function expectIntegrationError(operation: Promise<unknown>) {
-  await expect(operation).rejects.toMatchObject({
+async function expectIntegrationError(
+  operation: Promise<unknown>,
+  kind: RecommendationProviderFailureKind,
+) {
+  const error = await operation.catch((reason: unknown) => reason);
+  expect(error).toMatchObject({
     statusCode: 502,
     code: "INTEGRATION_ERROR",
     message: "Não foi possível gerar recomendações",
+    kind,
   });
 }
 
@@ -111,7 +117,10 @@ describe("Gemini recommendation adapter", () => {
   it("maps an incompatible structured output to a generic integration error", async () => {
     const { provider } = createProvider({ recommendations: [] });
 
-    await expectIntegrationError(provider.getRecommendations(quizAnswers));
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers),
+      "invalid_response",
+    );
   });
 
   it("maps duplicate recommendations to a generic integration error", async () => {
@@ -127,28 +136,40 @@ describe("Gemini recommendation adapter", () => {
       ],
     });
 
-    await expectIntegrationError(provider.getRecommendations(quizAnswers));
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers),
+      "invalid_response",
+    );
   });
 
   it("maps a missing response text to a generic integration error", async () => {
     const { provider, generateContent } = createProvider(validResponse);
     generateContent.mockResolvedValue({ text: undefined });
 
-    await expectIntegrationError(provider.getRecommendations(quizAnswers));
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers),
+      "invalid_response",
+    );
   });
 
   it("maps invalid JSON to a generic integration error", async () => {
     const { provider, generateContent } = createProvider(validResponse);
     generateContent.mockResolvedValue({ text: "not-json" });
 
-    await expectIntegrationError(provider.getRecommendations(quizAnswers));
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers),
+      "invalid_response",
+    );
   });
 
   it("maps a timeout to a generic integration error", async () => {
     const { provider, generateContent } = createProvider(validResponse);
     generateContent.mockRejectedValue(new Error("Gemini request timed out"));
 
-    await expectIntegrationError(provider.getRecommendations(quizAnswers));
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers),
+      "provider_failure",
+    );
     expect(generateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         config: expect.objectContaining({
@@ -162,7 +183,10 @@ describe("Gemini recommendation adapter", () => {
     const { provider, generateContent } = createProvider(validResponse);
     generateContent.mockRejectedValue(new Error("private provider details"));
 
-    await expectIntegrationError(provider.getRecommendations(quizAnswers));
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers),
+      "provider_failure",
+    );
   });
 
   it("rejects private library fields before sending anything to Gemini", async () => {
@@ -171,6 +195,8 @@ describe("Gemini recommendation adapter", () => {
       ...quizAnswers,
       notes: ["Anotação privada"],
       review: "Resenha privada",
+      Note: { content: "Nota privada" },
+      libraryEntries: [{ bookId: "private-book-id" }],
     };
 
     await expect(

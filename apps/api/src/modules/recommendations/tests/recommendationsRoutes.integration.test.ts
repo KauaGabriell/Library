@@ -6,6 +6,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../../../app";
 import { AppError } from "../../../errors/appError";
 import { createSessionToken } from "../../auth/sessionToken";
+import { RecommendationProviderError } from "../recommendationProvider";
 
 const recommendationMocks = vi.hoisted(() => ({
   getRecommendations: vi.fn(),
@@ -183,11 +184,7 @@ describe("POST /recommendations", () => {
   it("returns a standardized integration error when the provider fails", async () => {
     const sessionToken = createAuthenticatedSession();
     recommendationMocks.getRecommendations.mockRejectedValue(
-      new AppError(
-        "Não foi possível gerar recomendações",
-        502,
-        "INTEGRATION_ERROR",
-      ),
+      new RecommendationProviderError("provider_failure"),
     );
 
     const response = await app.inject({
