@@ -11,7 +11,8 @@
     "test:unit": "vitest run --exclude \"src/**/*.integration.test.ts\"",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "test:all": "pnpm run test:unit && pnpm run test:integration",
-    "test:watch": "vitest watch --exclude \"src/**/*.integration.test.ts\""
+    "test:watch": "vitest watch --exclude \"src/**/*.integration.test.ts\"",
+    "benchmark:recommendations": "tsx src/modules/recommendations/runRecommendationBenchmark.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
