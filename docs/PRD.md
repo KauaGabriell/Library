@@ -69,7 +69,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 1. Usuário digita termo de busca.
 2. Web consulta catálogo Google Books normalizado.
 3. Usuário escolhe um resultado adequado ou, se não encontrar o livro, seleciona cadastro manual.
-4. No fluxo Google Books, API usa o identificador Google para criar/recuperar `Book` canônico. No manual, API cria um `Book` com título obrigatório e demais metadados opcionais informados pelo usuário.
+4. No fluxo Google Books, API usa o identificador Google para criar/recuperar `Book` canônico. No manual, API cria um `Book` com título obrigatório e demais metadados opcionais informados pelo usuário; a capa pode ser informada por URL ou enviada como arquivo JPEG, PNG ou WebP de até 5 MiB.
 5. API cria `LibraryEntry` pessoal em `WANT_TO_READ`; a mesma obra Google não pode ser adicionada duas vezes à biblioteca do usuário. Cadastros manuais repetidos são permitidos e geram registros distintos.
 6. Web atualiza biblioteca e dashboard; duplicata Google retorna feedback claro.
 
@@ -96,7 +96,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 3. Provider retorna três itens estruturados: título, autor e justificativa.
 4. API valida schema e exige três sugestões distintas por título e autor, sem consultar o Google Books.
 5. Web mostra três cards textuais com título, autor e justificativa, sem capa genérica ou metadados indisponíveis. “Pesquisar livro” abre uma busca Google por título e autor em nova aba, sem enviar respostas do quiz.
-6. “Adicionar manualmente” abre o formulário compartilhado com título e autor preenchidos e editáveis. Usuário pode complementar sinopse, URL da capa, idioma e páginas; nada é salvo até confirmar. URL de imagem é suportada, upload de arquivo fica fora deste fluxo. Livros manuais repetidos são permitidos.
+6. “Adicionar manualmente” abre o formulário compartilhado com título e autor preenchidos e editáveis. Usuário pode complementar sinopse, URL ou arquivo de capa, idioma e páginas; URL e arquivo são alternativas e nada é salvo até confirmar. O upload aceita JPEG, PNG ou WebP de até 5 MiB. Livros manuais repetidos são permitidos.
 
 ### Histórias de usuário
 
@@ -129,7 +129,7 @@ O MVP privilegia consistência, privacidade e clareza arquitetural. Crescimento 
 | RF-002 | Login local/logout/sessão | Must | Credencial válida cria sessão; sessão expirada/revogada falha; logout invalida acesso posterior. |
 | RF-003 | Login Google | Must | OAuth usa state/PKCE; e-mail verificado cria/vincula conta; callback inválido não cria sessão. |
 | RF-004 | Busca de catálogo | Must | Termo válido retorna itens normalizados, paginados; erro externo retorna código recuperável. |
-| RF-005 | Adicionar livro | Must | Usuário pode adicionar resultado Google Books ou cadastrar manualmente quando não encontrar opção adequada. O ID Google é único quando informado; a mesma obra Google não duplica LibraryEntry do usuário. Registros manuais duplicados são permitidos e criam Books distintos. Todo novo item inicia em `WANT_TO_READ` e `currentPage = 0`. |
+| RF-005 | Adicionar livro | Must | Usuário pode adicionar resultado Google Books ou cadastrar manualmente quando não encontrar opção adequada. Capa manual aceita URL ou arquivo JPEG/PNG/WebP até 5 MiB, nunca ambos. O ID Google é único quando informado; a mesma obra Google não duplica LibraryEntry do usuário. Registros manuais duplicados são permitidos e criam Books distintos. Todo novo item inicia em `WANT_TO_READ` e `currentPage = 0`. |
 | RF-006 | Gerir biblioteca | Must | Usuário lista, filtra, atualiza status, página atual quando estiver `READING` e remove apenas suas entradas. |
 | RF-007 | Avaliar e resenhar | Must | Rating inteiro entre 1–5 e review só são aceitos se estado resultante for `READ`. |
 | RF-008 | Gerir anotações | Must | Criar/editar/excluir Note só é permitido ao owner de LibraryEntry em `READING` ou `READ`; `WANT_TO_READ` bloqueia mutação. |
@@ -213,11 +213,11 @@ User 1──N ReadingGoal
 | OAuthAccount | userId, provider, providerAccountId | provider + providerAccountId único |
 | Session | userId, tokenHash, expiresAt, revokedAt? | tokenHash único; sessão expira |
 | Book | googleBooksId?, title, authors, description?, coverUrl?, language?, pageCount? | `googleBooksId` opcional e único quando presente; vários Books manuais sem ID Google podem ter metadados iguais |
-| LibraryEntry | userId, bookId, status, currentPage?, rating?, review?, timestamps | userId + bookId único; currentPage entre 0 e Book.pageCount quando conhecido |
+| LibraryEntry | userId, bookId, status, currentPage?, coverOverrideUrl?, rating?, review?, timestamps | userId + bookId único; currentPage entre 0 e Book.pageCount quando conhecido; capa substituta é privada à entrada |
 | Note | libraryEntryId, content, timestamps | herda owner pela entrada; `content` limitado a 10.000 caracteres por anotação |
 | ReadingGoal | userId, year, targetBooks, timestamps | userId + year único; targetBooks 1–999 |
 
-No cadastro manual, `title` é obrigatório; `authors`, `description`, `coverUrl`, `language` e `pageCount` são opcionais. Se `authors` não for informado, o registro persiste uma lista vazia.
+No cadastro manual, `title` é obrigatório; `authors`, `description`, `language` e `pageCount` são opcionais. Se `authors` não for informado, o registro persiste uma lista vazia. A capa é opcional e enviada como arquivo JPEG, PNG ou WebP de até 5 MB; a aplicação não pede URL de imagem ao usuário. Uma substituição feita na biblioteca é pessoal e não altera a capa compartilhada do catálogo Google Books.
 
 ### Contratos HTTP de alto nível
 
@@ -228,7 +228,10 @@ No cadastro manual, `title` é obrigatório; `authors`, `description`, `coverUrl
 | `POST /auth/logout` / `GET /auth/me` | sessão | sim |
 | `GET /auth/google` e callback | início/retorno OAuth | não |
 | `GET /books/search` | catálogo paginado | não |
-| `GET/POST /library` | listar/adicionar livro do Google Books ou manual à biblioteca | sim |
+| `GET /books/covers/:filename` | capa enviada para livro manual | não |
+| `GET/POST /library` | listar/adicionar livro do Google Books ou manual por metadados/URL | sim |
+| `POST /library/manual` | adicionar livro manual com arquivo de capa multipart | sim |
+| `PUT /library/:id/cover` | substituir a capa apenas nesta entrada da biblioteca | sim |
 | `GET/PATCH/DELETE /library/:id` | detalhe/gestão | sim |
 | `POST /library/:id/notes` | criar anotação | sim |
 | `PATCH/DELETE /notes/:id` | gerir anotação | sim |
