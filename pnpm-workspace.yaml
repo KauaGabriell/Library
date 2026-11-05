@@ -2,10 +2,12 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@google/genai': false
   '@prisma/engines': false
   argon2: true
   esbuild: false
   prisma: false
+  protobufjs: false
 minimumReleaseAgeExclude:
   - '@prisma/config@7.10.0'
   - '@prisma/debug@7.10.0'
