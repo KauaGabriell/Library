@@ -94,6 +94,8 @@ model LibraryEntry {
   book        Book         @relation(fields: [bookId], references: [id])
   status      ReadingState
   currentPage Int?         @default(0) @map("current_page")
+  coverOverrideUrl String? @map("cover_override_url")
+  pageCountOverride Int?   @map("page_count_override")
   rating      Int?
   review      String?
   createdAt   DateTime     @default(now()) @map("created_at")
