@@ -33,16 +33,19 @@ export function RecommendationResultCard({
     saveMutation.reset();
   }
 
-  function saveManualBook(input: ManualBookInput) {
+  function saveManualBook(input: ManualBookInput, coverFile?: File) {
     if (saveMutation.isPending || saveMutation.isSuccess) return;
-    saveMutation.mutate(input, {
-      onSuccess: () => setManualDialogOpen(false),
-    });
+    saveMutation.mutate(
+      { input, ...(coverFile ? { coverFile } : {}) },
+      { onSuccess: () => setManualDialogOpen(false) },
+    );
   }
 
   function retrySave() {
-    const previousInput = saveMutation.variables;
-    if (previousInput?.source === "MANUAL") saveManualBook(previousInput);
+    const previous = saveMutation.variables;
+    if (previous?.input.source === "MANUAL") {
+      saveManualBook(previous.input, previous.coverFile);
+    }
   }
 
   return (
@@ -99,8 +102,8 @@ export function RecommendationResultCard({
         </Button>
         {saveMutation.isSuccess && (
           <p role="status" aria-live="polite" className="sr-only">
-            {saveMutation.variables?.source === "MANUAL"
-              ? saveMutation.variables.title
+            {saveMutation.variables?.input.source === "MANUAL"
+              ? saveMutation.variables.input.title
               : title}{" "}
             foi adicionado à sua biblioteca como Quero ler.
           </p>

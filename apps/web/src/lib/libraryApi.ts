@@ -34,7 +34,24 @@ export async function getLibraryEntryDetails(
 
 export async function addLibraryEntry(
   input: LibraryEntryCreateInput,
+  coverFile?: File,
 ): Promise<LibraryEntryPublicResponse> {
+  if (coverFile) {
+    if (input.source !== "MANUAL") {
+      throw new Error("Only a manual book can include an uploaded cover.");
+    }
+
+    const formData = new FormData();
+    formData.append("entry", JSON.stringify(input));
+    formData.append("cover", coverFile);
+
+    const response = await api.post<LibraryEntryPublicResponse>(
+      "/library/manual",
+      formData,
+    );
+    return response.data;
+  }
+
   const response = await api.post<LibraryEntryPublicResponse>(
     "/library",
     input,
@@ -50,6 +67,21 @@ export async function updateLibraryEntry(
     `/library/${encodeURIComponent(id)}`,
     patch,
   );
+  return response.data;
+}
+
+export async function updateLibraryEntryCover(
+  id: string,
+  coverFile: File,
+): Promise<LibraryEntryPublicResponse> {
+  const formData = new FormData();
+  formData.append("cover", coverFile);
+
+  const response = await api.put<LibraryEntryPublicResponse>(
+    `/library/${encodeURIComponent(id)}/cover`,
+    formData,
+  );
+
   return response.data;
 }
 

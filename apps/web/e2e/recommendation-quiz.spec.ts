@@ -383,7 +383,6 @@ test("saves selected recommendation and isolates success to its card", async ({
   );
   await expect(dialog.getByLabel("Autores")).toHaveValue("Matt Haig");
   await dialog.getByLabel("Descrição").fill("Sinopse preenchida pelo leitor.");
-  await dialog.getByLabel("URL da capa").fill("https://example.com/cover.jpg");
   await dialog.getByLabel("Número de páginas").fill("240");
   await dialog
     .getByRole("button", { name: "Adicionar livro", exact: true })
@@ -401,7 +400,6 @@ test("saves selected recommendation and isolates success to its card", async ({
       title: "A biblioteca da meia-noite",
       authors: ["Matt Haig"],
       description: "Sinopse preenchida pelo leitor.",
-      coverUrl: "https://example.com/cover.jpg",
       pageCount: 240,
     },
   ]);

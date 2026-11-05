@@ -14,7 +14,10 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { fetcher } from "../../lib/api";
-import { bookCoverFallbackUrl } from "../../lib/bookCover";
+import {
+  bookCoverFallbackUrl,
+  bookCoverImageSrc,
+} from "../../lib/bookCover";
 import { ReadingGoalDialog } from "../dashboard/ReadingGoalDialog";
 import { Book } from "../ui/Book";
 import { Button } from "../ui/Button";
@@ -230,7 +233,7 @@ export function Dashboard() {
               <div className="mt-3 flex items-center gap-4">
                 {betterRating.book.coverUrl ? (
                   <img
-                    src={betterRating.book.coverUrl}
+                    src={bookCoverImageSrc(betterRating.book.coverUrl)}
                     alt={`Capa de ${betterRating.book.title}`}
                     className="aspect-2/3 w-12 shrink-0 rounded-xs bg-background-surface object-cover"
                     loading="lazy"

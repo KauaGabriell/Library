@@ -1,8 +1,15 @@
 import type { LibraryEntryCreateInput } from "@library/contracts";
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { Input } from "../ui/Input";
+import { BookCoverUploadField } from "../library/BookCoverUploadField";
 
 type ManualBookInput = Extract<LibraryEntryCreateInput, { source: "MANUAL" }>;
 
@@ -13,7 +20,7 @@ type ManualBookFormDialogProps = {
   pending?: boolean;
   error?: string;
   onClose: () => void;
-  onSubmit: (input: ManualBookInput) => void;
+  onSubmit: (input: ManualBookInput, coverFile?: File) => void;
   onRetry?: () => void;
 };
 
@@ -30,6 +37,8 @@ export function ManualBookFormDialog({
   const initialAuthorText = initialAuthors?.join(", ") ?? "";
   const [title, setTitle] = useState(initialTitle);
   const [authorsText, setAuthorsText] = useState(initialAuthorText);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverError, setCoverError] = useState("");
   const [titleError, setTitleError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const descriptionId = useId();
@@ -39,6 +48,8 @@ export function ManualBookFormDialog({
       formRef.current?.reset();
       setTitle(initialTitle);
       setAuthorsText(initialAuthorText);
+      setCoverFile(null);
+      setCoverError("");
       setTitleError("");
     }
   }, [initialTitle, initialAuthorText, open]);
@@ -56,13 +67,13 @@ export function ManualBookFormDialog({
     }
 
     setTitleError("");
+    if (coverError) return;
 
     const authors = String(formData.get("authors") ?? "")
       .split(",")
       .map((author) => author.trim())
       .filter(Boolean);
     const description = String(formData.get("description") ?? "").trim();
-    const coverUrl = String(formData.get("coverUrl") ?? "").trim();
     const language = String(formData.get("language") ?? "").trim();
     const pageCountValue = String(formData.get("pageCount") ?? "");
     const pageCount = pageCountValue ? Number(pageCountValue) : undefined;
@@ -72,10 +83,9 @@ export function ManualBookFormDialog({
       title: trimmedTitle,
       authors,
       ...(description ? { description } : {}),
-      ...(coverUrl ? { coverUrl } : {}),
       ...(language ? { language } : {}),
       ...(pageCount === undefined ? {} : { pageCount }),
-    });
+    }, coverFile ?? undefined);
   }
 
   return (
@@ -121,11 +131,12 @@ export function ManualBookFormDialog({
               className="w-full rounded-field border border-border-control bg-background-surface px-3 py-2 text-body-sm text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             />
           </div>
-          <Input
-            label="URL da capa"
-            variant="modal"
-            name="coverUrl"
-            type="url"
+          <BookCoverUploadField
+            file={coverFile}
+            error={coverError}
+            disabled={pending}
+            onChange={setCoverFile}
+            onErrorChange={setCoverError}
           />
           <div className="grid gap-5 sm:grid-cols-2">
             <Input label="Idioma" variant="modal" name="language" />

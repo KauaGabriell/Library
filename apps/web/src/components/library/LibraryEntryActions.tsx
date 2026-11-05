@@ -75,12 +75,33 @@ export function LibraryEntryActions({
   return (
     <div
       className={
-        variant !== "card"
-          ? "flex items-center justify-end gap-1"
-          : "flex min-w-36 flex-col gap-2"
+        variant === "detail"
+          ? "flex min-w-0 flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"
+          : variant === "table"
+            ? "flex items-center justify-end gap-1"
+            : "flex min-w-36 flex-col gap-2"
       }
     >
-      {variant === "card" ? (
+      {variant === "detail" ? (
+        <div className="min-w-0 w-full sm:max-w-56 lg:w-56">
+          <Select
+            label="Estado de leitura"
+            aria-label={`Estado de leitura para ${entry.book.title}`}
+            value={entry.status}
+            disabled={isUpdating || isDeleting}
+            onChange={(event) =>
+              updateStatus(event.target.value as ReadingState)
+            }
+            className="rounded-none border-x-0 border-t-0 bg-transparent px-0"
+          >
+            {Object.entries(readingStateLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : variant === "card" ? (
         <Select
           label={`Status de ${entry.book.title}`}
           value={entry.status}
@@ -106,47 +127,62 @@ export function LibraryEntryActions({
           }}
           aria-label={`Editar status de ${entry.book.title}`}
           title="Editar status"
-          className={
-            variant === "detail"
-              ? "min-h-11 min-w-11 rounded-field border border-border-control px-3 text-xs text-text-primary hover:bg-background-surface hover:text-brand-primary"
-              : "min-h-11 min-w-11 px-0 text-text-secondary hover:text-brand-primary"
-          }
+          className="min-h-11 min-w-11 px-0 text-text-secondary hover:text-brand-primary"
         >
           <Pencil aria-hidden="true" className="size-4" />
-          {variant === "detail" && (
-            <span className="ml-1 hidden sm:inline">Editar estado</span>
+        </Button>
+      )}
+
+      {variant === "detail" ? (
+        <div className="flex justify-end border-t border-border-default/45 pt-1 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isDeleting || isUpdating}
+            loading={isDeleting}
+            onClick={() => setDeleteDialogOpen(true)}
+            aria-label={`Remover ${entry.book.title} da biblioteca`}
+            title="Remover livro"
+            className="min-h-11 px-2 text-feedback-error"
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+            Remover
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isDeleting || isUpdating}
+          loading={isDeleting}
+          onClick={() => setDeleteDialogOpen(true)}
+          aria-label={`Remover ${entry.book.title} da biblioteca`}
+          title="Remover livro"
+          className={
+            variant === "table"
+              ? "min-h-11 min-w-11 px-0 text-feedback-error"
+              : "min-h-11 justify-start px-2 text-feedback-error"
+          }
+        >
+          {variant === "table" ? (
+            <Trash2 aria-hidden="true" className="size-4" />
+          ) : (
+            "Remover"
           )}
         </Button>
       )}
 
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={isDeleting || isUpdating}
-        loading={isDeleting}
-        onClick={() => setDeleteDialogOpen(true)}
-        aria-label={`Remover ${entry.book.title} da biblioteca`}
-        title="Remover livro"
-        className={
-          variant !== "card"
-            ? `min-h-11 min-w-11 px-0 text-feedback-error ${variant === "detail" ? "rounded-field border border-border-default/70" : ""}`
-            : "min-h-11 justify-start px-2 text-feedback-error"
-        }
-      >
-        {variant !== "card" ? (
-          <Trash2 aria-hidden="true" className="size-4" />
-        ) : (
-          "Remover"
-        )}
-      </Button>
-
-      {variant === "card" && updateError && (
-        <ErrorState
-          message={updateErrorMessage ?? "Não foi possível atualizar o status."}
-          onRetry={() => retryUpdate()}
-        />
+      {(variant === "card" || variant === "detail") && updateError && (
+        <div className={variant === "detail" ? "basis-full" : undefined}>
+          <ErrorState
+            message={
+              updateErrorMessage ?? "Não foi possível atualizar o status."
+            }
+            onRetry={() => retryUpdate()}
+          />
+        </div>
       )}
-      {variant !== "card" && (
+      {variant === "table" && (
         <Dialog
           open={editDialogOpen}
           onClose={() => setEditDialogOpen(false)}

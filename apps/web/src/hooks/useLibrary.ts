@@ -12,6 +12,7 @@ import {
   getLibraryEntries,
   getLibraryEntryDetails,
   updateLibraryEntry,
+  updateLibraryEntryCover,
   updateLibraryNote,
 } from "../lib/libraryApi";
 
@@ -19,6 +20,11 @@ export const libraryQueryKeys = {
   all: ["library"] as const,
   list: (query: LibraryEntryListQuery) => ["library", "list", query] as const,
   detail: (id: string) => ["library", "detail", id] as const,
+};
+
+export type AddLibraryEntryVariables = {
+  input: LibraryEntryCreateInput;
+  coverFile?: File;
 };
 
 export function useLibraryEntries(
@@ -59,7 +65,8 @@ export function useAddLibraryEntry() {
   const invalidateLibraryData = useInvalidateLibraryData();
 
   return useMutation({
-    mutationFn: (input: LibraryEntryCreateInput) => addLibraryEntry(input),
+    mutationFn: ({ input, coverFile }: AddLibraryEntryVariables) =>
+      addLibraryEntry(input, coverFile),
     onSuccess: invalidateLibraryData,
   });
 }
@@ -75,6 +82,16 @@ export function useUpdateLibraryEntry() {
       id: string;
       patch: LibraryEntryUpdateInput;
     }) => updateLibraryEntry(id, patch),
+    onSuccess: invalidateLibraryData,
+  });
+}
+
+export function useUpdateLibraryEntryCover() {
+  const invalidateLibraryData = useInvalidateLibraryData();
+
+  return useMutation({
+    mutationFn: ({ id, coverFile }: { id: string; coverFile: File }) =>
+      updateLibraryEntryCover(id, coverFile),
     onSuccess: invalidateLibraryData,
   });
 }

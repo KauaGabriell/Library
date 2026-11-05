@@ -1,7 +1,10 @@
 import type { BookSearchItem } from "@library/contracts";
 import { BookOpen, BookPlus, Eye } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { bookCoverFallbackUrl } from "../../lib/bookCover";
+import {
+  bookCoverFallbackUrl,
+  bookCoverImageSrc,
+} from "../../lib/bookCover";
 import { Button } from "../ui/Button";
 
 type CatalogBookCardProps = {
@@ -45,7 +48,7 @@ export function CatalogBookCard({
       <div className="relative mb-3 overflow-hidden rounded-field bg-background-surface">
         {book.coverUrl ? (
           <img
-            src={book.coverUrl}
+            src={bookCoverImageSrc(book.coverUrl)}
             alt={`Capa de ${book.title}, por ${authorLabel}`}
             className="aspect-3/4 w-full object-cover"
             loading="lazy"

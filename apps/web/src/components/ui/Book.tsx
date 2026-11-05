@@ -1,7 +1,10 @@
 import type { ReadingState } from "@library/contracts";
 import { CirclePlus, PencilLine } from "lucide-react";
 import type { ComponentProps } from "react";
-import { bookCoverFallbackUrl } from "../../lib/bookCover";
+import {
+  bookCoverFallbackUrl,
+  bookCoverImageSrc,
+} from "../../lib/bookCover";
 import { formatDate } from "../../lib/formatDate";
 import { ReadingStatusBadge } from "./ReadingStatusBadge";
 
@@ -33,7 +36,7 @@ export function Book({
       className={`relative aspect-2/3 w-full max-w-56 overflow-hidden rounded-card border border-border-default bg-background-surface ${className ?? ""}`}
     >
       <img
-        src={coverUrl || bookCoverFallbackUrl}
+        src={bookCoverImageSrc(coverUrl)}
         alt={`Capa de ${title}, por ${authorLabel}`}
         className="absolute inset-0 h-full w-full object-cover"
         onError={(event) => {

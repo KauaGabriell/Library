@@ -638,9 +638,6 @@ test("adds a manual book from the library and refreshes the list", async ({
   await dialog
     .getByLabel("Descrição")
     .fill("Um músico busca respostas sobre seu passado.");
-  await dialog
-    .getByLabel("URL da capa")
-    .fill("https://covers.example.test/o-nome-do-vento.jpg");
   await dialog.getByLabel("Idioma").fill("pt-BR");
   await dialog.getByLabel("Número de páginas").fill("662");
   await dialog
@@ -667,6 +664,77 @@ test("adds a manual book from the library and refreshes the list", async ({
       pageCount: 662,
     },
   ]);
+});
+
+test("uploads a manual book cover as multipart form data", async ({ page }) => {
+  await mockSession(page);
+  const { entries, requests } = await mockManualLibrary(page);
+  let requestContentType = "";
+  let requestBody = "";
+
+  await page.route(`${apiUrl}/library/manual`, async (route) => {
+    requestContentType = route.request().headers()["content-type"] ?? "";
+    requestBody = route.request().postDataBuffer()?.toString("latin1") ?? "";
+    const created = manualEntry(151, {
+      source: "MANUAL",
+      title: "Livro com capa enviada",
+      authors: ["Autora"],
+    });
+    created.book.coverUrl = "/books/covers/00000000-0000-4000-8000-000000000151.png";
+    entries.push(created);
+    await route.fulfill({ status: 201, json: created });
+  });
+
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await dialog
+    .getByLabel("Título", { exact: true })
+    .fill("Livro com capa enviada");
+  await dialog.getByLabel("Autores").fill("Autora");
+  await dialog.getByLabel("Arquivo da capa").setInputFiles({
+    name: "cover.png",
+    mimeType: "image/png",
+    buffer: Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
+    ]),
+  });
+
+  await expect(dialog.getByRole("img", { name: "Prévia da capa" })).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Adicionar livro", exact: true })
+    .click();
+
+  await expect(dialog).toBeHidden();
+  expect(requestContentType).toMatch(/^multipart\/form-data; boundary=/);
+  expect(requestBody).toContain('name="entry"');
+  expect(requestBody).toContain('"title":"Livro com capa enviada"');
+  expect(requestBody).toContain('name="cover"; filename="cover.png"');
+  expect(requests).toHaveLength(0);
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "Livro com capa enviada foi adicionado à biblioteca.",
+    }),
+  ).toBeVisible();
+});
+
+test("shows clear Portuguese guidance for optional cover uploads", async ({ page }) => {
+  await mockSession(page);
+  await mockManualLibrary(page);
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Adicionar manualmente" }).click();
+
+  const dialog = page.getByRole("dialog", {
+    name: "Adicionar livro manualmente",
+  });
+  await expect(dialog.getByLabel("URL da capa")).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Selecionar imagem" })).toBeVisible();
+  await expect(dialog.getByText("Nenhum arquivo selecionado")).toBeVisible();
+  await expect(
+    dialog.getByText("Selecione uma imagem JPEG, PNG ou WebP, com até 5 MB."),
+  ).toBeVisible();
 });
 
 test("rejects a whitespace-only title without posting", async ({ page }) => {
@@ -721,9 +789,6 @@ test("retries a failed manual create without losing form values", async ({
   await dialog.getByLabel("Título", { exact: true }).fill("A Vida Invisível");
   await dialog.getByLabel("Autores").fill("Martha Wells");
   await dialog.getByLabel("Descrição").fill("Descrição para preservar.");
-  await dialog
-    .getByLabel("URL da capa")
-    .fill("https://covers.example.test/vida-invisivel.jpg");
   await dialog.getByLabel("Idioma").fill("pt-BR");
   await dialog.getByLabel("Número de páginas").fill("224");
   await dialog
@@ -737,9 +802,6 @@ test("retries a failed manual create without losing form values", async ({
   await expect(dialog.getByLabel("Autores")).toHaveValue("Martha Wells");
   await expect(dialog.getByLabel("Descrição")).toHaveValue(
     "Descrição para preservar.",
-  );
-  await expect(dialog.getByLabel("URL da capa")).toHaveValue(
-    "https://covers.example.test/vida-invisivel.jpg",
   );
   await expect(dialog.getByLabel("Idioma")).toHaveValue("pt-BR");
   await expect(dialog.getByLabel("Número de páginas")).toHaveValue("224");
@@ -803,9 +865,14 @@ test("canceling manual creation sends no request and reopening clears the draft"
   await dialog.getByLabel("Título", { exact: true }).fill("Rascunho local");
   await dialog.getByLabel("Autores").fill("Autor de teste");
   await dialog.getByLabel("Descrição").fill("Não deve persistir.");
-  await dialog
-    .getByLabel("URL da capa")
-    .fill("https://covers.example.test/rascunho.jpg");
+  await dialog.getByLabel("Arquivo da capa").setInputFiles({
+    name: "rascunho.png",
+    mimeType: "image/png",
+    buffer: Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
+    ]),
+  });
+  await expect(dialog.getByText("rascunho.png")).toBeVisible();
   await dialog.getByLabel("Idioma").fill("pt-BR");
   await dialog.getByLabel("Número de páginas").fill("100");
   await dialog.getByRole("button", { name: "Cancelar" }).click();
@@ -815,7 +882,7 @@ test("canceling manual creation sends no request and reopening clears the draft"
   await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue("");
   await expect(dialog.getByLabel("Autores")).toHaveValue("");
   await expect(dialog.getByLabel("Descrição")).toHaveValue("");
-  await expect(dialog.getByLabel("URL da capa")).toHaveValue("");
+  await expect(dialog.getByText("Nenhum arquivo selecionado")).toBeVisible();
   await expect(dialog.getByLabel("Idioma")).toHaveValue("");
   await expect(dialog.getByLabel("Número de páginas")).toHaveValue("");
 });

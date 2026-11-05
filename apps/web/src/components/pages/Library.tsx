@@ -89,18 +89,22 @@ export function Library() {
     setStatusMessage(`${title} foi adicionado à biblioteca.`);
   }
 
-  function submitManualBook(input: ManualBookInput) {
-    addLibraryEntryMutation.mutate(input, {
+  function submitManualBook(input: ManualBookInput, coverFile?: File) {
+    addLibraryEntryMutation.mutate(
+      { input, ...(coverFile ? { coverFile } : {}) },
+      {
       onSuccess: () => handleManualBookCreated(input.title),
-    });
+      },
+    );
   }
 
   function retryManualBookCreation() {
-    const previousInput = addLibraryEntryMutation.variables;
-    if (previousInput?.source !== "MANUAL") return;
+    const previous = addLibraryEntryMutation.variables;
+    if (previous?.input.source !== "MANUAL") return;
+    const title = previous.input.title;
 
-    addLibraryEntryMutation.mutate(previousInput, {
-      onSuccess: () => handleManualBookCreated(previousInput.title),
+    addLibraryEntryMutation.mutate(previous, {
+      onSuccess: () => handleManualBookCreated(title),
     });
   }
 

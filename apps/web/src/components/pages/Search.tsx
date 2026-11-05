@@ -214,7 +214,9 @@ export function Search() {
   function addCatalogBook(book: BookSearchItem) {
     setManualSuccessMessage("");
     addMutation.mutate(
-      { source: "GOOGLE_BOOKS", googleBooksId: book.googleBooksId },
+      {
+        input: { source: "GOOGLE_BOOKS", googleBooksId: book.googleBooksId },
+      },
       {
         onSuccess: () => {
           setAddedGoogleBooksIds((current) =>
@@ -227,8 +229,9 @@ export function Search() {
 
   function addManualBook(
     input: Extract<LibraryEntryCreateInput, { source: "MANUAL" }>,
+    coverFile?: File,
   ) {
-    addMutation.mutate(input, {
+    addMutation.mutate({ input, ...(coverFile ? { coverFile } : {}) }, {
       onSuccess: () => {
         setManualSuccessMessage(
           `“${input.title}” foi adicionado à sua biblioteca.`,
@@ -239,8 +242,10 @@ export function Search() {
   }
 
   function retryManualBook() {
-    const previousInput = addMutation.variables;
-    if (previousInput?.source === "MANUAL") addManualBook(previousInput);
+    const previous = addMutation.variables;
+    if (previous?.input.source === "MANUAL") {
+      addManualBook(previous.input, previous.coverFile);
+    }
   }
 
   const books = useQuery({
@@ -253,14 +258,14 @@ export function Search() {
   const resultItems = books.data?.items ?? [];
   const hasValidQuery = normalizedQuery.length >= 2;
   const manualFormError =
-    addMutation.isError && addMutation.variables?.source === "MANUAL"
+    addMutation.isError && addMutation.variables?.input.source === "MANUAL"
       ? addMutation.error.message
       : undefined;
   const googleBookError = (googleBooksId: string) => {
     if (
       !addMutation.isError ||
-      addMutation.variables?.source !== "GOOGLE_BOOKS" ||
-      addMutation.variables.googleBooksId !== googleBooksId
+      addMutation.variables?.input.source !== "GOOGLE_BOOKS" ||
+      addMutation.variables.input.googleBooksId !== googleBooksId
     ) {
       return undefined;
     }
@@ -303,8 +308,8 @@ export function Search() {
           isAdded={addedGoogleBooksIds.has(book.googleBooksId)}
           isAdding={
             addMutation.isPending &&
-            addMutation.variables?.source === "GOOGLE_BOOKS" &&
-            addMutation.variables.googleBooksId === book.googleBooksId
+            addMutation.variables?.input.source === "GOOGLE_BOOKS" &&
+            addMutation.variables.input.googleBooksId === book.googleBooksId
           }
           errorMessage={googleBookError(book.googleBooksId)}
         />
@@ -376,7 +381,8 @@ export function Search() {
         open={manualDialogOpen}
         initialTitle={normalizedQuery}
         pending={
-          addMutation.isPending && addMutation.variables?.source === "MANUAL"
+          addMutation.isPending &&
+          addMutation.variables?.input.source === "MANUAL"
         }
         error={manualFormError}
         onClose={() => setManualDialogOpen(false)}
