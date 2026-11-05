@@ -7,6 +7,7 @@ export {
   errorsCodeList,
   errorsSchema,
   notFoundErrorSchema,
+  payloadTooLargeErrorSchema,
   rateLimitErrorSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,

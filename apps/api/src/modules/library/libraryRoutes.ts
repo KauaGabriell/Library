@@ -9,6 +9,7 @@ import {
   libraryEntryQuerySchema,
   libraryEntryUpdateSchema,
   notFoundErrorSchema,
+  payloadTooLargeErrorSchema,
   unauthenticatedErrorSchema,
   validationErrorSchema,
 } from "@library/contracts";
@@ -16,6 +17,10 @@ import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
+import {
+  bookCoverStorage,
+  getStoredBookCoverFilename,
+} from "../books/bookCoverStorage";
 import { booksService } from "../books/booksService";
 import { notesService } from "../notes/notesService";
 import {
@@ -23,8 +28,92 @@ import {
   mapLibraryEntryToPublicResponse,
 } from "./libraryMapper";
 import { libraryService } from "./libraryService";
+import { parseBookCoverMultipart } from "./parseBookCoverMultipart";
+import { parseManualBookCoverUpload } from "./parseManualBookCoverUpload";
 
 export const libraryRoutes: FastifyPluginAsync = async (app) => {
+  app.withTypeProvider<ZodTypeProvider>().post("/library/manual", {
+    schema: {
+      tags: ["Library"],
+      summary: "Adiciona livro manual com capa enviada",
+      response: {
+        201: libraryEntryPublicResponseSchema,
+        400: validationErrorSchema,
+        401: unauthenticatedErrorSchema,
+        409: conflictErrorSchema,
+        413: payloadTooLargeErrorSchema,
+      },
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+      if (!user) {
+        throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+      }
+
+      const upload = await parseManualBookCoverUpload(request);
+      const entry = await booksService.addManualBookWithCover(
+        user.id,
+        upload.input,
+        { file: upload.file, mimeType: upload.mimeType },
+      );
+
+      return reply
+        .status(201)
+        .send(mapLibraryEntryToPublicResponse(entry));
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().put("/library/:libraryId/cover", {
+    schema: {
+      tags: ["Library"],
+      summary: "Atualiza a capa pessoal de uma entrada da biblioteca",
+      params: libraryEntryQuerySchema,
+      response: {
+        200: libraryEntryPublicResponseSchema,
+        400: validationErrorSchema,
+        401: unauthenticatedErrorSchema,
+        404: notFoundErrorSchema,
+        413: payloadTooLargeErrorSchema,
+      },
+    },
+    preHandler: requireUser,
+    handler: async (request, reply) => {
+      const user = request.user;
+      if (!user) {
+        throw new AppError("Não autenticado", 401, "UNAUTHENTICATED");
+      }
+
+      const { libraryId } = libraryEntryQuerySchema.parse(request.params);
+      const { cover } = await parseBookCoverMultipart(request);
+      if (!cover) {
+        throw new AppError(
+          "Selecione uma imagem para a capa",
+          400,
+          "VALIDATION_ERROR",
+        );
+      }
+
+      const result = await libraryService.updateLibraryCover({
+        userId: user.id,
+        libraryId,
+        ...cover,
+      });
+
+      if (result.previousCoverFilename) {
+        try {
+          await bookCoverStorage.remove(result.previousCoverFilename);
+        } catch (error) {
+          request.log.warn({ err: error }, "Failed to remove replaced book cover");
+        }
+      }
+
+      return reply
+        .status(200)
+        .send(mapLibraryEntryToPublicResponse(result.entry));
+    },
+  });
+
   app.withTypeProvider<ZodTypeProvider>().post("/library", {
     schema: {
       tags: ["Library"],
@@ -148,7 +237,21 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
 
       const { libraryId } = libraryEntryQuerySchema.parse(request.params);
 
-      await libraryService.deleteLibrary({ userId: user.id, libraryId });
+      const deletedEntry = await libraryService.deleteLibrary({
+        userId: user.id,
+        libraryId,
+      });
+      const coverFilename = getStoredBookCoverFilename(
+        deletedEntry.coverOverrideUrl,
+      );
+
+      if (coverFilename) {
+        try {
+          await bookCoverStorage.remove(coverFilename);
+        } catch (error) {
+          request.log.warn({ err: error }, "Failed to remove deleted book cover");
+        }
+      }
       reply.status(204);
     },
   });

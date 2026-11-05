@@ -34,7 +34,12 @@ export const dashboardService = {
       betterRatedEntry?.rating == null
         ? null
         : {
-            book: bookPublicResponse.parse(betterRatedEntry.book),
+            book: bookPublicResponse.parse({
+              ...betterRatedEntry.book,
+              coverUrl:
+                betterRatedEntry.coverOverrideUrl ??
+                betterRatedEntry.book.coverUrl,
+            }),
             rating: betterRatedEntry.rating,
           };
 

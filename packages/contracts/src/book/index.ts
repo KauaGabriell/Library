@@ -8,5 +8,6 @@ export {
 } from "./bookSchema.js";
 
 export * from "./bookSearch.js";
+export * from "./bookCoverUpload.js";
 
 export { type ReadingState, readingStateSchema } from "./readingState.js";

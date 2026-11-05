@@ -9,6 +9,7 @@ export const errorsCodeList = [
   "INTEGRATION_ERROR",
   "INTERNAL_ERROR",
   "RATE_LIMITED",
+  "PAYLOAD_TOO_LARGE",
 ] as const;
 
 export type ErrorCode = (typeof errorsCodeList)[number];
@@ -43,6 +44,10 @@ export const notFoundErrorSchema = baseErrorSchema.extend({
 export const rateLimitErrorSchema = baseErrorSchema.extend({
   message: z.literal("Muitas tentativas. Tente novamente mais tarde."),
   code: z.literal("RATE_LIMITED"),
+});
+
+export const payloadTooLargeErrorSchema = baseErrorSchema.extend({
+  code: z.literal("PAYLOAD_TOO_LARGE"),
 });
 
 export { errorsSchema };

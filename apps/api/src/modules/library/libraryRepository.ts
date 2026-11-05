@@ -20,10 +20,18 @@ export type DeleteLibraryParams = {
   libraryId: string;
 };
 
+export type UpdateLibraryCoverParams = {
+  userId: string;
+  libraryId: string;
+  coverOverrideUrl: string;
+};
+
 const libraryEntrySelect = {
   id: true,
   status: true,
   currentPage: true,
+  coverOverrideUrl: true,
+  pageCountOverride: true,
   rating: true,
   review: true,
   createdAt: true,
@@ -132,9 +140,24 @@ export const libraryRepository = {
         ...(patch.currentPage !== undefined
           ? { currentPage: patch.currentPage }
           : {}),
+        ...(patch.pageCount !== undefined
+          ? { pageCountOverride: patch.pageCount }
+          : {}),
         ...(patch.rating !== undefined ? { rating: patch.rating } : {}),
         ...(patch.review !== undefined ? { review: patch.review } : {}),
       },
+      select: libraryEntrySelect,
+    });
+  },
+
+  updateLibraryCover({
+    userId,
+    libraryId,
+    coverOverrideUrl,
+  }: UpdateLibraryCoverParams) {
+    return prisma.libraryEntry.update({
+      where: { userId, id: libraryId },
+      data: { coverOverrideUrl },
       select: libraryEntrySelect,
     });
   },

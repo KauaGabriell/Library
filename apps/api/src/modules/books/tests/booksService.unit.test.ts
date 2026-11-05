@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { LibraryEntryCreateInput } from "@library/contracts";
 import { Prisma } from "../../../generated/prisma/client";
 import { type BooksRepository, booksRepository } from "../booksRepository";
 import { createBooksService } from "../booksService";
@@ -56,5 +57,73 @@ describe("booksService.addToLibrary duplicate mapping", () => {
     await expect(
       serviceWithError(error).addToLibrary("user-id", input),
     ).rejects.toBe(error);
+  });
+});
+
+describe("booksService.addManualBookWithCover", () => {
+  const input: Extract<LibraryEntryCreateInput, { source: "MANUAL" }> = {
+    source: "MANUAL",
+    title: "Livro manual",
+    authors: ["Autora"],
+  };
+  const image = {
+    file: Buffer.from("image-bytes"),
+    mimeType: "image/png",
+  };
+
+  function createUploadService(repository: BooksRepository) {
+    const googleBooksCatalog = {
+      getById: vi.fn(),
+      search: vi.fn(),
+    } as unknown as GoogleBooksCatalog;
+    const bookCoverStorage = {
+      save: vi.fn().mockResolvedValue({
+        filename: "cover.png",
+        url: "/books/covers/cover.png",
+      }),
+      remove: vi.fn().mockResolvedValue(undefined),
+      open: vi.fn(),
+    };
+
+    return {
+      service: createBooksService({
+        repository,
+        googleBooksCatalog,
+        bookCoverStorage,
+      }),
+      bookCoverStorage,
+    };
+  }
+
+  it("persists the generated cover URL with the manual book", async () => {
+    const repository = {
+      ...booksRepository,
+      createManualBookAndLibraryEntry: vi.fn().mockResolvedValue({ id: "entry-id" }),
+    } as unknown as BooksRepository;
+    const { service, bookCoverStorage } = createUploadService(repository);
+
+    await service.addManualBookWithCover("user-id", input, image);
+
+    expect(bookCoverStorage.save).toHaveBeenCalledWith(image.file, image.mimeType);
+    expect(repository.createManualBookAndLibraryEntry).toHaveBeenCalledWith(
+      "user-id",
+      { ...input, coverUrl: "/books/covers/cover.png" },
+    );
+    expect(bookCoverStorage.remove).not.toHaveBeenCalled();
+  });
+
+  it("removes the stored cover when database creation fails", async () => {
+    const databaseError = new Error("Database unavailable");
+    const repository = {
+      ...booksRepository,
+      createManualBookAndLibraryEntry: vi.fn().mockRejectedValue(databaseError),
+    } as unknown as BooksRepository;
+    const { service, bookCoverStorage } = createUploadService(repository);
+
+    await expect(
+      service.addManualBookWithCover("user-id", input, image),
+    ).rejects.toBe(databaseError);
+
+    expect(bookCoverStorage.remove).toHaveBeenCalledWith("cover.png");
   });
 });

@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
@@ -12,10 +13,12 @@ import {
 } from "fastify-type-provider-zod";
 import { envConfig } from "./config/env";
 import { loggerConfig } from "./config/fastify/fastifyLoggerConfig";
+import { multipartConfig } from "./config/fastify/multipartConfig";
 import { prisma } from "./lib/prisma";
 import { registerErrorHandler } from "./middlewares/errorHandling";
 import { authRoutes } from "./modules/auth/authRoutes";
 import { bookRoutes } from "./modules/books/bookRoutes";
+import { bookCoverRoutes } from "./modules/books/bookCoverRoutes";
 import { dashboardRoutes } from "./modules/dashboard/dashboardRoutes";
 import { libraryRoutes } from "./modules/library/libraryRoutes";
 import { notesRoutes } from "./modules/notes/notesRoutes";
@@ -68,6 +71,7 @@ app.register(fastifyRateLimit, {
     };
   },
 });
+app.register(multipart, multipartConfig);
 
 const recommendationsService = createRecommendationsService({
   provider: createGeminiRecommendationProvider({
@@ -78,6 +82,7 @@ const recommendationsService = createRecommendationsService({
 
 app.register(authRoutes, { prefix: "/auth" });
 app.register(bookRoutes, { prefix: "/books" });
+app.register(bookCoverRoutes, { prefix: "/books/covers" });
 app.register(recommendationsRoutes, {
   prefix: "/recommendations",
   recommendationsService,

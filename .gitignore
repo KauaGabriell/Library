@@ -6,6 +6,7 @@ node_modules
 .pnpm-store
 apps/web/test-results/
 apps/web/playwright-report/
+/apps/api/uploads/book-covers/
 
 # GRAPHIFY
 graphify-out/

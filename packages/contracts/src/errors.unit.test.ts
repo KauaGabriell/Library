@@ -1,4 +1,8 @@
-import { notFoundErrorSchema, validationErrorSchema } from "@library/contracts";
+import {
+  notFoundErrorSchema,
+  payloadTooLargeErrorSchema,
+  validationErrorSchema,
+} from "@library/contracts";
 import { describe, expect, it } from "vitest";
 
 describe("notFoundErrorSchema public export", () => {
@@ -20,5 +24,16 @@ describe("validationErrorSchema", () => {
     };
 
     expect(validationErrorSchema.parse(errorResponse)).toEqual(errorResponse);
+  });
+});
+
+describe("payloadTooLargeErrorSchema", () => {
+  it("accepts a payload size limit response", () => {
+    const errorResponse = {
+      code: "PAYLOAD_TOO_LARGE",
+      message: "A capa deve ter no máximo 5 MB",
+    };
+
+    expect(payloadTooLargeErrorSchema.parse(errorResponse)).toEqual(errorResponse);
   });
 });

@@ -11,6 +11,7 @@ import {
 import { app } from "../../../app";
 import { AppError } from "../../../errors/appError";
 import { prisma } from "../../../lib/prisma";
+import { bookCoverStorage } from "../../books/bookCoverStorage";
 import {
   createBook,
   createLibraryEntry,
@@ -30,6 +31,31 @@ const users = new Set<string>();
 const createdBookIds = new Set<string>();
 const googleBooksIds = new Set<string>();
 const manualTitles = new Set<string>();
+const uploadedCoverFilenames = new Set<string>();
+
+function multipartCoverPayload(
+  entry: unknown,
+  file: Buffer,
+  mimeType = "image/png",
+) {
+  const boundary = `library-${randomUUID()}`;
+  const entryField = typeof entry === "string" ? entry : JSON.stringify(entry);
+  const payload = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="entry"\r\n\r\n${entryField}\r\n`,
+    ),
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="cover"; filename="client-name.png"\r\nContent-Type: ${mimeType}\r\n\r\n`,
+    ),
+    file,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+
+  return {
+    payload,
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
+}
 
 async function authenticatedUser() {
   const user = await createUser();
@@ -122,6 +148,12 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  await Promise.all(
+    [...uploadedCoverFilenames].map((filename) =>
+      bookCoverStorage.remove(filename),
+    ),
+  );
+  uploadedCoverFilenames.clear();
   await prisma.libraryEntry.deleteMany({
     where: { userId: { in: [...users] } },
   });
@@ -1380,5 +1412,158 @@ describe("DELETE /library/:libraryId", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
+describe("POST /library/manual", () => {
+  const png = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02,
+  ]);
+
+  it("creates a manual book with the uploaded cover and serves the image", async () => {
+    const { cookie } = await authenticatedUser();
+    const title = `Manual cover ${randomUUID()}`;
+    manualTitles.add(title);
+    const { payload, contentType } = multipartCoverPayload(
+      { source: "MANUAL", title, authors: ["Autora"] },
+      png,
+    );
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/library/manual",
+      headers: { cookie, "content-type": contentType },
+      payload,
+    });
+
+    expect(createResponse.statusCode).toBe(201);
+    const createdEntry = createResponse.json();
+    expect(createdEntry).toMatchObject({
+      status: "WANT_TO_READ",
+      currentPage: 0,
+      book: { title, authors: ["Autora"] },
+    });
+    expect(createdEntry.book.coverUrl).toMatch(
+      /^\/books\/covers\/[0-9a-f-]+\.png$/,
+    );
+    expect(createdEntry).not.toHaveProperty("userId");
+    expect(createdEntry).not.toHaveProperty("bookId");
+
+    const filename = createdEntry.book.coverUrl.split("/").at(-1);
+    uploadedCoverFilenames.add(filename);
+    const savedBook = await prisma.book.findFirstOrThrow({ where: { title } });
+    expect(savedBook.coverUrl).toBe(createdEntry.book.coverUrl);
+
+    const coverResponse = await app.inject({
+      method: "GET",
+      url: createdEntry.book.coverUrl,
+    });
+
+    expect(coverResponse.statusCode).toBe(200);
+    expect(coverResponse.headers["content-type"]).toBe("image/png");
+    expect(Buffer.from(coverResponse.rawPayload)).toEqual(png);
+  });
+
+  it("requires an authenticated session", async () => {
+    const { payload, contentType } = multipartCoverPayload(
+      { source: "MANUAL", title: "Unauthenticated cover" },
+      png,
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/library/manual",
+      headers: { "content-type": contentType },
+      payload,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ code: "UNAUTHENTICATED" });
+  });
+
+  it.each([
+    ["invalid JSON", "{invalid json"],
+    [
+      "a non-manual book source",
+      JSON.stringify({ source: "GOOGLE_BOOKS", googleBooksId: "google-id" }),
+    ],
+    [
+      "both a URL and file cover",
+      JSON.stringify({
+        source: "MANUAL",
+        title: "Both covers",
+        coverUrl: "https://example.com/cover.jpg",
+      }),
+    ],
+  ])("rejects %s without creating a library entry", async (_case, entry) => {
+    const { user, cookie } = await authenticatedUser();
+    const { payload, contentType } = multipartCoverPayload(entry, png);
+    const beforeCount = await prisma.libraryEntry.count({
+      where: { userId: user.id },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/library/manual",
+      headers: { cookie, "content-type": contentType },
+      payload,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(
+      await prisma.libraryEntry.count({ where: { userId: user.id } }),
+    ).toBe(beforeCount);
+  });
+
+  it("rejects a file whose signature does not match its MIME type", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const title = `Invalid cover ${randomUUID()}`;
+    manualTitles.add(title);
+    const { payload, contentType } = multipartCoverPayload(
+      { source: "MANUAL", title },
+      Buffer.from("not an image"),
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/library/manual",
+      headers: { cookie, "content-type": contentType },
+      payload,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await prisma.book.count({ where: { title } })).toBe(0);
+    expect(await prisma.libraryEntry.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it("rejects files larger than 5 MiB with a payload-too-large error", async () => {
+    const { user, cookie } = await authenticatedUser();
+    const title = `Oversized cover ${randomUUID()}`;
+    manualTitles.add(title);
+    const oversizedPng = Buffer.concat([
+      png,
+      Buffer.alloc(5 * 1024 * 1024 + 1 - png.length),
+    ]);
+    const { payload, contentType } = multipartCoverPayload(
+      { source: "MANUAL", title },
+      oversizedPng,
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/library/manual",
+      headers: { cookie, "content-type": contentType },
+      payload,
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toEqual({
+      code: "PAYLOAD_TOO_LARGE",
+      message: "A capa deve ter no máximo 5 MB",
+    });
+    expect(await prisma.book.count({ where: { title } })).toBe(0);
+    expect(await prisma.libraryEntry.count({ where: { userId: user.id } })).toBe(0);
   });
 });

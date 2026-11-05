@@ -21,6 +21,8 @@ const libraryEntryDetailSelect = {
   id: true,
   status: true,
   currentPage: true,
+  coverOverrideUrl: true,
+  pageCountOverride: true,
   rating: true,
   review: true,
   createdAt: true,

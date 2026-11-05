@@ -39,6 +39,11 @@ export const libraryEntryUpdateSchema = z.object({
     .int({ message: "A página atual deve ser um número inteiro" })
     .min(0, { message: "A página atual não pode ser negativa" })
     .optional(),
+  pageCount: z
+    .int({ message: "O total de páginas deve ser um número inteiro" })
+    .min(1, { message: "O total de páginas deve ser maior que zero" })
+    .nullable()
+    .optional(),
   rating: z
     .int({ message: "A avaliação deve ser um número inteiro" })
     .min(1, { message: "A avaliação deve ser no mínimo 1" })

@@ -10,6 +10,8 @@ type LibraryEntryForMapping = Omit<
   LibraryEntryPublicResponse,
   "createdAt" | "updatedAt" | "progressPercent"
 > & {
+  coverOverrideUrl?: string | null;
+  pageCountOverride?: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -26,21 +28,25 @@ type LibraryEntryDetailsForMapping = LibraryEntryForMapping & {
 function getProgressPercent(entry: LibraryEntryForMapping): number | null {
   if (entry.status === "READ") return 100;
 
+  const pageCount = entry.pageCountOverride ?? entry.book.pageCount;
+
   if (
     entry.status !== "READING" ||
     entry.currentPage === null ||
-    entry.book.pageCount === null ||
-    entry.book.pageCount <= 0
+    pageCount === null ||
+    pageCount <= 0
   ) {
     return null;
   }
 
-  return Math.floor((entry.currentPage / entry.book.pageCount) * 100);
+  return Math.floor((entry.currentPage / pageCount) * 100);
 }
 
 export function mapLibraryEntryToPublicResponse(
   entry: LibraryEntryForMapping,
 ): LibraryEntryPublicResponse {
+  const hasPageCountOverride = entry.pageCountOverride != null;
+
   return libraryEntryPublicResponseSchema.parse({
     id: entry.id,
     status: entry.status,
@@ -56,10 +62,12 @@ export function mapLibraryEntryToPublicResponse(
       authors: entry.book.authors,
       description: entry.book.description,
       descriptionSourceUrl: entry.book.descriptionSourceUrl,
-      coverUrl: entry.book.coverUrl,
+      coverUrl: entry.coverOverrideUrl ?? entry.book.coverUrl,
       language: entry.book.language,
-      pageCount: entry.book.pageCount,
-      pageCountSourceUrl: entry.book.pageCountSourceUrl,
+      pageCount: entry.pageCountOverride ?? entry.book.pageCount,
+      pageCountSourceUrl: hasPageCountOverride
+        ? null
+        : entry.book.pageCountSourceUrl,
     },
   });
 }
