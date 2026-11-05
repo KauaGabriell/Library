@@ -62,7 +62,7 @@ describe("libraryService.updateLibrary current page validation", () => {
     ).rejects.toMatchObject({
       statusCode: 400,
       code: "VALIDATION_ERROR",
-      message: "A página atual não pode ultrapassar o total de páginas do livro",
+      message: "O total de páginas não pode ser menor que a página atual registrada",
     });
 
     expect(repositoryMock.updateLibrary).not.toHaveBeenCalled();
