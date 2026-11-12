@@ -23,6 +23,23 @@ describe("application", () => {
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });
 
+  it("does not grant CORS access to an unconfigured origin", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: {
+        origin: "https://untrusted.example",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe(FRONTEND_URL);
+    expect(response.headers["access-control-allow-origin"]).not.toBe(
+      "https://untrusted.example",
+    );
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+  });
+
   it("allows PUT in the CORS preflight for the allowed origin", async () => {
     const response = await app.inject({
       method: "OPTIONS",
