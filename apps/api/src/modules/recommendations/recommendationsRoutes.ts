@@ -11,6 +11,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { recommendationRateLimit } from "../../config/fastify/recommendationRateLimitConfig";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
+import { createProviderCallContext } from "../../observability/providerTelemetry";
 import type { createRecommendationsService } from "./recommendationsService";
 
 type RecommendationsRoutesOptions = {
@@ -44,6 +45,7 @@ export const recommendationsRoutes: FastifyPluginAsync<
 
       const recommendations = await recommendationsService.getRecommendations(
         request.body,
+        createProviderCallContext(request.id, request.log),
       );
 
       return reply.status(200).send(recommendations);

@@ -47,9 +47,13 @@ describe("Google Books catalog adapter", () => {
       }),
     );
     const catalog = createGoogleBooksCatalog({ fetchImpl: fetchMock });
+    const recordProviderEvent = vi.fn();
 
     await expect(
-      catalog.search({ q: query, page: 2, pageSize: 10 }),
+      catalog.search(
+        { q: query, page: 2, pageSize: 10 },
+        { requestId: "request-books-search", recordProviderEvent },
+      ),
     ).resolves.toEqual({
       items: [
         {
@@ -72,6 +76,14 @@ describe("Google Books catalog adapter", () => {
     expect(requestUrl.searchParams.has("key")).toBe(false);
     const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
     expect(headers.get("X-Goog-Api-Key")).toBe(apiKey);
+    expect(recordProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "google_books",
+        operation: "search_books",
+        durationMs: expect.any(Number),
+        result: "success",
+      }),
+    );
   });
 
   it("maps zero page count to null without rejecting search results", async () => {
@@ -220,8 +232,26 @@ describe("Google Books catalog adapter", () => {
       .fn<typeof fetch>()
       .mockRejectedValue(new Error("provider network details"));
     const catalog = createGoogleBooksCatalog({ fetchImpl: fetchMock });
+    const recordProviderEvent = vi.fn();
 
-    await expectIntegrationError(catalog.getById("network-failure-book"));
+    await expectIntegrationError(
+      catalog.getById("network-failure-book", {
+        requestId: "request-books-failure",
+        recordProviderEvent,
+      }),
+    );
+
+    expect(recordProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "google_books",
+        operation: "get_book_by_id",
+        durationMs: expect.any(Number),
+        result: "failure",
+      }),
+    );
+    expect(JSON.stringify(recordProviderEvent.mock.calls)).not.toContain(
+      "provider network details",
+    );
   });
 
   it("maps timeout failures to an integration error", async () => {

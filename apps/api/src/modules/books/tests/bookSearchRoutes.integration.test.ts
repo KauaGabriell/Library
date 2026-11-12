@@ -1,5 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
-import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
+import {
+  serializerCompiler,
+  validatorCompiler,
+} from "fastify-type-provider-zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../errors/appError";
 import { registerErrorHandler } from "../../../middlewares/errorHandling";
@@ -67,11 +70,17 @@ describe("GET /books/search", () => {
       page: 2,
       nextPage: 3,
     });
-    expect(catalogMock.search).toHaveBeenCalledWith({
-      q: "Clean Code",
-      page: 2,
-      pageSize: 10,
-    });
+    expect(catalogMock.search).toHaveBeenCalledWith(
+      {
+        q: "Clean Code",
+        page: 2,
+        pageSize: 10,
+      },
+      expect.objectContaining({
+        requestId: expect.any(String),
+        recordProviderEvent: expect.any(Function),
+      }),
+    );
   });
 
   it("returns an empty successful page when the catalog has no books", async () => {

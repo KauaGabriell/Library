@@ -1,4 +1,5 @@
 import type { BookSearchItem, BookSearchQuery } from "@library/contracts";
+import type { ProviderCallContext } from "../../observability/providerTelemetry";
 
 export type GoogleBookMetadata = {
   title: string;
@@ -15,10 +16,12 @@ export type GoogleBooksSearchResult = {
 };
 
 export interface GoogleBooksCatalog {
-  getById(googleBooksId: string): Promise<GoogleBookMetadata>;
-  search({
-    q,
-    page,
-    pageSize,
-  }: BookSearchQuery): Promise<GoogleBooksSearchResult>;
+  getById(
+    googleBooksId: string,
+    context?: ProviderCallContext,
+  ): Promise<GoogleBookMetadata>;
+  search(
+    { q, page, pageSize }: BookSearchQuery,
+    context?: ProviderCallContext,
+  ): Promise<GoogleBooksSearchResult>;
 }

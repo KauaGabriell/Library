@@ -1,6 +1,7 @@
 import { bookSearchResponseSchema, bookSearchSchema } from "@library/contracts";
 import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { createProviderCallContext } from "../../observability/providerTelemetry";
 import { booksService } from "./booksService";
 
 export const bookRoutes: FastifyPluginAsync = async (app) => {
@@ -14,7 +15,10 @@ export const bookRoutes: FastifyPluginAsync = async (app) => {
     },
     handler: async (request, reply) => {
       const { q, page, pageSize } = bookSearchSchema.parse(request.query);
-      const result = await booksService.searchBook({ q, page, pageSize });
+      const result = await booksService.searchBook(
+        { q, page, pageSize },
+        createProviderCallContext(request.id, request.log),
+      );
 
       reply.status(200).send(result);
     },

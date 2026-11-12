@@ -5,6 +5,7 @@ import type {
 } from "@library/contracts";
 import { AppError } from "../../errors/appError";
 import { isDuplicateLibraryEntry } from "../../middlewares/errorHandling";
+import type { ProviderCallContext } from "../../observability/providerTelemetry";
 import {
   type BookCoverStorage,
   bookCoverStorage as defaultBookCoverStorage,
@@ -30,7 +31,11 @@ export function createBooksService({
   bookCoverStorage = defaultBookCoverStorage,
 }: BooksServiceDependencies) {
   return {
-    async addToLibrary(userId: string, input: LibraryEntryCreateInput) {
+    async addToLibrary(
+      userId: string,
+      input: LibraryEntryCreateInput,
+      context?: ProviderCallContext,
+    ) {
       try {
         if (input.source === "MANUAL") {
           return await repository.createManualBookAndLibraryEntry(
@@ -50,7 +55,9 @@ export function createBooksService({
           );
         }
 
-        const metadata = await googleBooksCatalog.getById(input.googleBooksId);
+        const metadata = context
+          ? await googleBooksCatalog.getById(input.googleBooksId, context)
+          : await googleBooksCatalog.getById(input.googleBooksId);
 
         return await repository.createGoogleBookAndLibraryEntry(
           userId,
@@ -99,12 +106,14 @@ export function createBooksService({
       }
     },
 
-    async searchBook({
-      q,
-      page,
-      pageSize,
-    }: BookSearchQuery): Promise<BookSearchResponse> {
-      const result = await googleBooksCatalog.search({ q, page, pageSize });
+    async searchBook(
+      { q, page, pageSize }: BookSearchQuery,
+      context?: ProviderCallContext,
+    ): Promise<BookSearchResponse> {
+      const query = { q, page, pageSize };
+      const result = context
+        ? await googleBooksCatalog.search(query, context)
+        : await googleBooksCatalog.search(query);
       return {
         items: result.items,
         page: page,

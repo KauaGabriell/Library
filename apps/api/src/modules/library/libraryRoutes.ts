@@ -17,6 +17,7 @@ import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { AppError } from "../../errors/appError";
 import { requireUser } from "../../middlewares/requireUser";
+import { createProviderCallContext } from "../../observability/providerTelemetry";
 import {
   bookCoverStorage,
   getStoredBookCoverFilename,
@@ -58,9 +59,7 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
         { file: upload.file, mimeType: upload.mimeType },
       );
 
-      return reply
-        .status(201)
-        .send(mapLibraryEntryToPublicResponse(entry));
+      return reply.status(201).send(mapLibraryEntryToPublicResponse(entry));
     },
   });
 
@@ -104,7 +103,10 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
         try {
           await bookCoverStorage.remove(result.previousCoverFilename);
         } catch (error) {
-          request.log.warn({ err: error }, "Failed to remove replaced book cover");
+          request.log.warn(
+            { err: error },
+            "Failed to remove replaced book cover",
+          );
         }
       }
 
@@ -135,6 +137,7 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
       const entry = await booksService.addToLibrary(
         request.user.id,
         request.body,
+        createProviderCallContext(request.id, request.log),
       );
       const publicEntry = mapLibraryEntryToPublicResponse(entry);
 
@@ -249,7 +252,10 @@ export const libraryRoutes: FastifyPluginAsync = async (app) => {
         try {
           await bookCoverStorage.remove(coverFilename);
         } catch (error) {
-          request.log.warn({ err: error }, "Failed to remove deleted book cover");
+          request.log.warn(
+            { err: error },
+            "Failed to remove deleted book cover",
+          );
         }
       }
       reply.status(204);

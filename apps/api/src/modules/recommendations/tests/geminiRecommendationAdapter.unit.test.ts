@@ -114,6 +114,53 @@ describe("Gemini recommendation adapter", () => {
     expect(request.config.abortSignal).toBeInstanceOf(AbortSignal);
   });
 
+  it("records Gemini provider call duration and successful outcome", async () => {
+    const { provider } = createProvider(validResponse);
+    const recordProviderEvent = vi.fn();
+
+    await provider.getRecommendations(quizAnswers, {
+      requestId: "request-gemini-success",
+      recordProviderEvent,
+    });
+
+    expect(recordProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "gemini",
+        operation: "generate_recommendations",
+        durationMs: expect.any(Number),
+        result: "success",
+      }),
+    );
+  });
+
+  it("records failed Gemini provider calls without provider details", async () => {
+    const { provider, generateContent } = createProvider(validResponse);
+    const recordProviderEvent = vi.fn();
+    generateContent.mockRejectedValue(
+      new Error("private provider response and secret"),
+    );
+
+    await expectIntegrationError(
+      provider.getRecommendations(quizAnswers, {
+        requestId: "request-gemini-failure",
+        recordProviderEvent,
+      }),
+      "provider_failure",
+    );
+
+    expect(recordProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "gemini",
+        operation: "generate_recommendations",
+        durationMs: expect.any(Number),
+        result: "failure",
+      }),
+    );
+    expect(JSON.stringify(recordProviderEvent.mock.calls)).not.toContain(
+      "private provider response and secret",
+    );
+  });
+
   it("maps an incompatible structured output to a generic integration error", async () => {
     const { provider } = createProvider({ recommendations: [] });
 

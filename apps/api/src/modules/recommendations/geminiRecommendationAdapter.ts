@@ -7,6 +7,8 @@ import {
   recommendationQuizRequestSchema,
   recommendationQuizResponseSchema,
 } from "@library/contracts";
+import type { ProviderCallContext } from "../../observability/providerTelemetry";
+import { observeProviderCall } from "../../observability/providerTelemetry";
 import {
   type RecommendationProvider,
   RecommendationProviderError,
@@ -62,46 +64,54 @@ export function createGeminiRecommendationProvider({
   return {
     async getRecommendations(
       answers: RecommendationQuizRequest,
+      context?: ProviderCallContext,
     ): Promise<RecommendationQuizResponse> {
-      const preferences = recommendationQuizRequestSchema.parse(answers);
+      return observeProviderCall(
+        context,
+        "gemini",
+        "generate_recommendations",
+        async () => {
+          const preferences = recommendationQuizRequestSchema.parse(answers);
 
-      let response: Awaited<
-        ReturnType<GeminiClient["models"]["generateContent"]>
-      >;
-      try {
-        response = await client.models.generateContent({
-          model,
-          contents: JSON.stringify(preferences),
-          config: {
-            systemInstruction: recommendationInstructions,
-            responseMimeType: "application/json",
-            responseJsonSchema: recommendationResponseJsonSchema,
-            maxOutputTokens,
-            abortSignal: AbortSignal.timeout(timeoutMs),
-          },
-        });
-      } catch {
-        throw new RecommendationProviderError("provider_failure");
-      }
+          let response: Awaited<
+            ReturnType<GeminiClient["models"]["generateContent"]>
+          >;
+          try {
+            response = await client.models.generateContent({
+              model,
+              contents: JSON.stringify(preferences),
+              config: {
+                systemInstruction: recommendationInstructions,
+                responseMimeType: "application/json",
+                responseJsonSchema: recommendationResponseJsonSchema,
+                maxOutputTokens,
+                abortSignal: AbortSignal.timeout(timeoutMs),
+              },
+            });
+          } catch {
+            throw new RecommendationProviderError("provider_failure");
+          }
 
-      if (!response.text) {
-        throw new RecommendationProviderError("invalid_response");
-      }
+          if (!response.text) {
+            throw new RecommendationProviderError("invalid_response");
+          }
 
-      let responseData: unknown;
-      try {
-        responseData = JSON.parse(response.text);
-      } catch {
-        throw new RecommendationProviderError("invalid_response");
-      }
+          let responseData: unknown;
+          try {
+            responseData = JSON.parse(response.text);
+          } catch {
+            throw new RecommendationProviderError("invalid_response");
+          }
 
-      const parsedResponse =
-        recommendationQuizResponseSchema.safeParse(responseData);
-      if (!parsedResponse.success) {
-        throw new RecommendationProviderError("invalid_response");
-      }
+          const parsedResponse =
+            recommendationQuizResponseSchema.safeParse(responseData);
+          if (!parsedResponse.success) {
+            throw new RecommendationProviderError("invalid_response");
+          }
 
-      return parsedResponse.data;
+          return parsedResponse.data;
+        },
+      );
     },
   };
 }

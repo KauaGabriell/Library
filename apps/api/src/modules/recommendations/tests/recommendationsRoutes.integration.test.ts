@@ -177,6 +177,10 @@ describe("POST /recommendations", () => {
     expect(recommendationMocks.getRecommendations).toHaveBeenCalledOnce();
     expect(recommendationMocks.getRecommendations).toHaveBeenCalledWith(
       quizAnswers,
+      expect.objectContaining({
+        requestId: expect.any(String),
+        recordProviderEvent: expect.any(Function),
+      }),
     );
     expect(recommendationMocks.search).not.toHaveBeenCalled();
   });

@@ -2,6 +2,8 @@ import type { BookSearchQuery } from "@library/contracts";
 import { safeParse, z } from "zod";
 import { envConfig } from "../../config/env";
 import { AppError } from "../../errors/appError";
+import type { ProviderCallContext } from "../../observability/providerTelemetry";
+import { observeProviderCall } from "../../observability/providerTelemetry";
 import type {
   GoogleBookMetadata,
   GoogleBooksSearchResult,
@@ -51,106 +53,148 @@ export function createGoogleBooksCatalog({
   timeoutMs = 5_000,
 }: GoogleBooksCatalogDependencies) {
   return {
-    async getById(googleBooksId: string): Promise<GoogleBookMetadata> {
-      try {
-        const url = new URL(
-          `https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(googleBooksId)}`,
-        );
+    async getById(
+      googleBooksId: string,
+      context?: ProviderCallContext,
+    ): Promise<GoogleBookMetadata> {
+      return observeProviderCall(
+        context,
+        "google_books",
+        "get_book_by_id",
+        async () => {
+          try {
+            const url = new URL(
+              `https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(googleBooksId)}`,
+            );
 
-        const response = await fetchImpl(url, {
-          signal: AbortSignal.timeout(timeoutMs),
-          headers: {
-            "X-Goog-Api-Key": envConfig.GOOGLE_BOOKS_API_KEY,
-          },
-        });
-        if (response.ok === false)
-          throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
+            const response = await fetchImpl(url, {
+              signal: AbortSignal.timeout(timeoutMs),
+              headers: {
+                "X-Goog-Api-Key": envConfig.GOOGLE_BOOKS_API_KEY,
+              },
+            });
+            if (response.ok === false)
+              throw new AppError(
+                "Erro ao buscar livro",
+                502,
+                "INTEGRATION_ERROR",
+              );
 
-        const volumeInfoResponse: unknown = await response.json();
+            const volumeInfoResponse: unknown = await response.json();
+            const parsed = safeParse(
+              googleVolumeResponseSchema,
+              volumeInfoResponse,
+            );
 
-        const parsed = safeParse(
-          googleVolumeResponseSchema,
-          volumeInfoResponse,
-        );
+            if (!parsed.success)
+              throw new AppError(
+                "Erro ao buscar livro",
+                502,
+                "INTEGRATION_ERROR",
+              );
 
-        if (!parsed.success)
-          throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
-
-        const { volumeInfo } = parsed.data;
-        return {
-          title: volumeInfo.title,
-          authors: volumeInfo.authors ?? [],
-          coverUrl:
-            volumeInfo.imageLinks?.thumbnail ??
-            volumeInfo.imageLinks?.smallThumbnail ??
-            null,
-          description: volumeInfo.description ?? null,
-          language: volumeInfo.language ?? null,
-          pageCount: normalizePageCount(volumeInfo.pageCount),
-        };
-      } catch {
-        throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
-      }
+            const { volumeInfo } = parsed.data;
+            return {
+              title: volumeInfo.title,
+              authors: volumeInfo.authors ?? [],
+              coverUrl:
+                volumeInfo.imageLinks?.thumbnail ??
+                volumeInfo.imageLinks?.smallThumbnail ??
+                null,
+              description: volumeInfo.description ?? null,
+              language: volumeInfo.language ?? null,
+              pageCount: normalizePageCount(volumeInfo.pageCount),
+            };
+          } catch {
+            throw new AppError(
+              "Erro ao buscar livro",
+              502,
+              "INTEGRATION_ERROR",
+            );
+          }
+        },
+      );
     },
 
-    async search({
-      q,
-      page,
-      pageSize,
-    }: BookSearchQuery): Promise<GoogleBooksSearchResult> {
-      try {
-        const params = new URLSearchParams({
-          q,
-          maxResults: String(pageSize),
-          startIndex: String((page - 1) * pageSize),
-        });
-        const url = new URL(
-          `https://www.googleapis.com/books/v1/volumes?${params}`,
-        );
+    async search(
+      { q, page, pageSize }: BookSearchQuery,
+      context?: ProviderCallContext,
+    ): Promise<GoogleBooksSearchResult> {
+      return observeProviderCall(
+        context,
+        "google_books",
+        "search_books",
+        async () => {
+          try {
+            const params = new URLSearchParams({
+              q,
+              maxResults: String(pageSize),
+              startIndex: String((page - 1) * pageSize),
+            });
+            const url = new URL(
+              `https://www.googleapis.com/books/v1/volumes?${params}`,
+            );
 
-        const startIndex = Number(url.searchParams.get("startIndex"));
+            const startIndex = Number(url.searchParams.get("startIndex"));
 
-        const response = await fetchImpl(url, {
-          signal: AbortSignal.timeout(timeoutMs),
-          headers: {
-            "X-Goog-Api-Key": envConfig.GOOGLE_BOOKS_API_KEY,
-          },
-        });
+            const response = await fetchImpl(url, {
+              signal: AbortSignal.timeout(timeoutMs),
+              headers: {
+                "X-Goog-Api-Key": envConfig.GOOGLE_BOOKS_API_KEY,
+              },
+            });
 
-        if (response.ok === false)
-          throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
+            if (response.ok === false)
+              throw new AppError(
+                "Erro ao buscar livro",
+                502,
+                "INTEGRATION_ERROR",
+              );
 
-        const book = await response.json();
-        const parsedBook = safeParse(googleVolumesSearchResponseSchema, book);
+            const book = await response.json();
+            const parsedBook = safeParse(
+              googleVolumesSearchResponseSchema,
+              book,
+            );
 
-        if (parsedBook.success === false) {
-          throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
-        }
+            if (parsedBook.success === false) {
+              throw new AppError(
+                "Erro ao buscar livro",
+                502,
+                "INTEGRATION_ERROR",
+              );
+            }
 
-        const items = parsedBook.data.items.map((item) => {
-          return {
-            googleBooksId: item.id,
-            title: item.volumeInfo.title,
-            authors: item.volumeInfo.authors ?? [],
-            coverUrl:
-              item.volumeInfo.imageLinks?.thumbnail ??
-              item.volumeInfo.imageLinks?.smallThumbnail ??
-              null,
-            description: item.volumeInfo.description ?? null,
-            language: item.volumeInfo.language ?? null,
-            pageCount: normalizePageCount(item.volumeInfo.pageCount),
-          };
-        });
+            const items = parsedBook.data.items.map((item) => {
+              return {
+                googleBooksId: item.id,
+                title: item.volumeInfo.title,
+                authors: item.volumeInfo.authors ?? [],
+                coverUrl:
+                  item.volumeInfo.imageLinks?.thumbnail ??
+                  item.volumeInfo.imageLinks?.smallThumbnail ??
+                  null,
+                description: item.volumeInfo.description ?? null,
+                language: item.volumeInfo.language ?? null,
+                pageCount: normalizePageCount(item.volumeInfo.pageCount),
+              };
+            });
 
-        return {
-          items: items,
-          hasMore:
-            items.length > 0 &&
-            startIndex + items.length < parsedBook.data.totalItems,
-        };
-      } catch {
-        throw new AppError("Erro ao buscar livro", 502, "INTEGRATION_ERROR");
-      }
+            return {
+              items: items,
+              hasMore:
+                items.length > 0 &&
+                startIndex + items.length < parsedBook.data.totalItems,
+            };
+          } catch {
+            throw new AppError(
+              "Erro ao buscar livro",
+              502,
+              "INTEGRATION_ERROR",
+            );
+          }
+        },
+      );
     },
   };
 }

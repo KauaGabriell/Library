@@ -3,6 +3,7 @@ import type {
   RecommendationQuizResponse,
 } from "@library/contracts";
 import { AppError } from "../../errors/appError";
+import type { ProviderCallContext } from "../../observability/providerTelemetry";
 
 export type RecommendationProviderFailureKind =
   | "provider_failure"
@@ -21,5 +22,6 @@ export class RecommendationProviderError extends AppError {
 export interface RecommendationProvider {
   getRecommendations(
     answers: RecommendationQuizRequest,
+    context?: ProviderCallContext,
   ): Promise<RecommendationQuizResponse>;
 }

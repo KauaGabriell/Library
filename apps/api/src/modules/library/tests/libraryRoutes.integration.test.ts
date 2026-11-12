@@ -11,12 +11,12 @@ import {
 import { app } from "../../../app";
 import { AppError } from "../../../errors/appError";
 import { prisma } from "../../../lib/prisma";
-import { bookCoverStorage } from "../../books/bookCoverStorage";
 import {
   createBook,
   createLibraryEntry,
   createUser,
 } from "../../../test/factories";
+import { bookCoverStorage } from "../../books/bookCoverStorage";
 
 const catalogMock = vi.hoisted(() => ({
   getById: vi.fn(),
@@ -255,6 +255,13 @@ describe("POST /library", () => {
     expect(response.json()).not.toHaveProperty("bookId");
     expect(response.json().book).not.toHaveProperty("id");
     expect(Date.parse(response.json().createdAt)).not.toBeNaN();
+    expect(catalogMock.getById).toHaveBeenCalledWith(
+      input.googleBooksId,
+      expect.objectContaining({
+        requestId: expect.any(String),
+        recordProviderEvent: expect.any(Function),
+      }),
+    );
     expect(
       await prisma.libraryEntry.count({ where: { userId: user.id } }),
     ).toBe(1);
@@ -1535,7 +1542,9 @@ describe("POST /library/manual", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
     expect(await prisma.book.count({ where: { title } })).toBe(0);
-    expect(await prisma.libraryEntry.count({ where: { userId: user.id } })).toBe(0);
+    expect(
+      await prisma.libraryEntry.count({ where: { userId: user.id } }),
+    ).toBe(0);
   });
 
   it("rejects files larger than 5 MiB with a payload-too-large error", async () => {
@@ -1564,6 +1573,8 @@ describe("POST /library/manual", () => {
       message: "A capa deve ter no máximo 5 MB",
     });
     expect(await prisma.book.count({ where: { title } })).toBe(0);
-    expect(await prisma.libraryEntry.count({ where: { userId: user.id } })).toBe(0);
+    expect(
+      await prisma.libraryEntry.count({ where: { userId: user.id } }),
+    ).toBe(0);
   });
 });
