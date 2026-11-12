@@ -10,11 +10,13 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  outputDir: "./test-results",
   fullyParallel: true,
   reporter: "list",
   workers: 1,
   use: {
     baseURL,
+    screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
   webServer: {
