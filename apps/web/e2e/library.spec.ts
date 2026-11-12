@@ -560,7 +560,9 @@ test("shows book skeletons while the library request is pending", async ({
 }) => {
   await mockSession(page);
   await mockLibrary(page, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(
+      page.getByRole("status", { name: "Carregando biblioteca" }),
+    ).toBeVisible();
     await route.fulfill({
       status: 200,
       json: listResponse({ items: [entry(1)] }),
@@ -568,9 +570,6 @@ test("shows book skeletons while the library request is pending", async ({
   });
 
   await page.goto("/library");
-  await expect(
-    page.getByRole("status", { name: "Carregando biblioteca" }),
-  ).toBeVisible();
   await expect(page.getByRole("rowheader", { name: /Livro 1/ })).toBeVisible();
 });
 
