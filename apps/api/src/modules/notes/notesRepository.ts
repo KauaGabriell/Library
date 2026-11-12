@@ -71,10 +71,11 @@ export const notesRepository = {
     });
   },
 
-  getNoteById(noteId: string) {
-    return prisma.note.findUnique({
+  getNoteById(noteId: string, userId: string) {
+    return prisma.note.findFirst({
       where: {
         id: noteId,
+        libraryEntry: { userId },
       },
     });
   },

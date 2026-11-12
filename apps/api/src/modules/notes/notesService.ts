@@ -49,7 +49,7 @@ export const notesService = {
   },
 
   async updateNote({ noteId, content, userId }: NoteUpdate) {
-    const note = await notesRepository.getNoteById(noteId);
+    const note = await notesRepository.getNoteById(noteId, userId);
 
     if (!note) throw new AppError("Nota não encontrada", 404, "NOT_FOUND");
 
@@ -77,7 +77,7 @@ export const notesService = {
   },
 
   async deleteNote(noteId: string, userId: string) {
-    const note = await notesRepository.getNoteById(noteId);
+    const note = await notesRepository.getNoteById(noteId, userId);
 
     if (!note) throw new AppError("Nota não encontrada", 404, "NOT_FOUND");
 
