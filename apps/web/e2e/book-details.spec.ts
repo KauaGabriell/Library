@@ -180,18 +180,12 @@ async function mockDetailApi(page: Page, initialEntry: DetailEntry) {
 }
 
 async function changeStatus(page: Page, status: ReadingState) {
-  await page.getByRole("button", { name: "Editar status de Duna" }).click();
-  await page.getByLabel("Novo status").selectOption(status);
-  await page.getByRole("button", { name: "Salvar status" }).click();
-  const statusLabel =
-    status === "READING" ? "Lendo" : status === "READ" ? "Lido" : "Quero ler";
-  const statusSection = page
-    .getByText("Estado de leitura", { exact: true })
-    .locator("xpath=..");
+  const statusSelect = page.getByRole("combobox", {
+    name: "Estado de leitura para Duna",
+  });
 
-  await expect(
-    statusSection.getByText(statusLabel, { exact: true }),
-  ).toBeVisible();
+  await statusSelect.selectOption(status);
+  await expect(statusSelect).toHaveValue(status);
 }
 
 test("starts reading, saves progress and note, then rates and reviews the book", async ({
@@ -332,7 +326,7 @@ test("hides progress editing without page count and keeps WANT_TO_READ notes rea
   );
 });
 
-test("keeps reading status controls separated on narrow mobile screens", async ({
+test("keeps status and removal controls usable on narrow mobile screens", async ({
   page,
 }) => {
   await mockSession(page);
@@ -340,56 +334,50 @@ test("keeps reading status controls separated on narrow mobile screens", async (
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/library/${libraryId}`);
 
-  const editButton = page.getByRole("button", {
-    name: "Editar status de Duna",
+  const statusSelect = page.getByRole("combobox", {
+    name: "Estado de leitura para Duna",
   });
   const deleteButton = page.getByRole("button", {
     name: "Remover Duna da biblioteca",
   });
   const statusLabel = page.getByText("Estado de leitura", { exact: true });
   const pagesLabel = page.getByText("Páginas", { exact: true });
-  const pageCountValue = page.getByText("120", { exact: true });
   const languageLabel = page.getByText("Idioma", { exact: true });
   await expect(statusLabel).toBeVisible();
   await expect(pagesLabel).toBeVisible();
-  await expect(pageCountValue).toBeVisible();
   await expect(languageLabel).toBeVisible();
-  await expect(editButton).toBeVisible();
+  await expect(statusSelect).toBeVisible();
   await expect(deleteButton).toBeVisible();
 
-  const editBounds = await editButton.boundingBox();
+  const statusBounds = await statusSelect.boundingBox();
   const deleteBounds = await deleteButton.boundingBox();
-  const pageBounds = await pagesLabel.boundingBox();
-  const pageCountBounds = await pageCountValue.boundingBox();
-  const languageBounds = await languageLabel.boundingBox();
-  const statusCardBounds = await statusLabel
-    .locator("xpath=../..")
+  const coverBounds = await page
+    .getByRole("img", { name: "Sem capa de Duna" })
     .boundingBox();
+  const pageBounds = await pagesLabel.boundingBox();
+  const languageBounds = await languageLabel.boundingBox();
   if (
-    !editBounds ||
+    !statusBounds ||
     !deleteBounds ||
+    !coverBounds ||
     !pageBounds ||
-    !pageCountBounds ||
-    !languageBounds ||
-    !statusCardBounds
+    !languageBounds
   ) {
     throw new Error("Os controles de status precisam estar visíveis.");
   }
 
   expect(languageBounds.y).toBeGreaterThan(pageBounds.y);
-  expect(statusCardBounds.y).toBeGreaterThan(
-    pageCountBounds.y + pageCountBounds.height,
+  expect(statusBounds.x).toBeGreaterThanOrEqual(
+    coverBounds.x + coverBounds.width,
   );
-  expect(Math.abs(statusCardBounds.x - pageBounds.x)).toBeLessThanOrEqual(1);
-  expect(editBounds.width).toBeGreaterThanOrEqual(44);
+  expect(statusBounds.y).toBeLessThan(pageBounds.y);
+  expect(deleteBounds.y).toBeGreaterThanOrEqual(
+    statusBounds.y + statusBounds.height,
+  );
+  expect(statusBounds.width).toBeGreaterThanOrEqual(44);
+  expect(statusBounds.height).toBeGreaterThanOrEqual(44);
   expect(deleteBounds.width).toBeGreaterThanOrEqual(44);
-  expect(editBounds.x).toBeGreaterThanOrEqual(statusCardBounds.x);
-  expect(deleteBounds.x + deleteBounds.width).toBeLessThanOrEqual(
-    statusCardBounds.x + statusCardBounds.width,
-  );
-  expect(editBounds.x + editBounds.width).toBeLessThanOrEqual(
-    deleteBounds.x + 1,
-  );
+  expect(deleteBounds.height).toBeGreaterThanOrEqual(44);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

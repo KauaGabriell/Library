@@ -659,7 +659,6 @@ test("adds a manual book from the library and refreshes the list", async ({
       title: "O Nome do Vento",
       authors: [],
       description: "Um músico busca respostas sobre seu passado.",
-      coverUrl: "https://covers.example.test/o-nome-do-vento.jpg",
       language: "pt-BR",
       pageCount: 662,
     },

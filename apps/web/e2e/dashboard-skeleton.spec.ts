@@ -160,7 +160,7 @@ test("shows an empty-library message with a link to book search", async ({
   ).toHaveAttribute("href", "/search");
 });
 
-test("links recent activity to the library and marks the quiz as upcoming", async ({
+test("links recent activity to the library and opens the recommendation quiz", async ({
   page,
 }) => {
   await page.route(`${apiUrl}/auth/me`, async (route) => {
@@ -176,10 +176,8 @@ test("links recent activity to the library and marks the quiz as upcoming", asyn
   await expect(page).toHaveURL(/\/library$/);
 
   await page.goto("/dashboard");
-  await expect(page.getByText("Disponível em breve")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Começar quiz" })).toHaveCount(
-    0,
-  );
+  await page.getByRole("link", { name: "Começar quiz" }).click();
+  await expect(page).toHaveURL(/\/recommendations\/quiz$/);
 });
 
 test("shows the update date for recent activity and falls back when a cover fails", async ({
