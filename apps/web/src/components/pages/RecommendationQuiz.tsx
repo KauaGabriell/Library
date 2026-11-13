@@ -16,6 +16,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRecommendationQuiz } from "../../hooks/useRecommendationQuiz";
 import { api } from "../../lib/api";
+import { ApiClientError } from "../../lib/apiError";
 import { RecommendationResultCard } from "../recommendations/RecommendationResultCard";
 import {
   type RecommendationQuizStep,
@@ -429,6 +430,7 @@ export function RecommendationQuiz() {
               <ErrorState
                 message={recommendationMutation.error.message}
                 onRetry={
+                  recommendationMutation.error instanceof ApiClientError &&
                   recommendationMutation.error.code === "RATE_LIMITED"
                     ? undefined
                     : handleRetry
