@@ -11,6 +11,8 @@ import { RecommendationProviderError } from "../recommendationProvider";
 const recommendationMocks = vi.hoisted(() => ({
   getRecommendations: vi.fn(),
   search: vi.fn(),
+  dailyUsageUpsert: vi.fn(),
+  dailyUsageUpdateMany: vi.fn(),
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -24,6 +26,10 @@ vi.mock("../../../lib/prisma", () => ({
   prisma: {
     session: { findFirst: authMocks.sessionFindFirst },
     user: { findUnique: authMocks.userFindUnique },
+    recommendationDailyUsage: {
+      upsert: recommendationMocks.dailyUsageUpsert,
+      updateMany: recommendationMocks.dailyUsageUpdateMany,
+    },
     $queryRaw: vi.fn(),
   },
 }));
@@ -127,6 +133,10 @@ beforeEach(() => {
     .mockRejectedValue(
       new AppError("Catálogo indisponível", 502, "INTEGRATION_ERROR"),
     );
+  recommendationMocks.dailyUsageUpsert.mockReset().mockResolvedValue({});
+  recommendationMocks.dailyUsageUpdateMany
+    .mockReset()
+    .mockResolvedValue({ count: 1 });
 });
 
 afterAll(async () => {
