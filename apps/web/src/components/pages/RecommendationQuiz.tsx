@@ -1,4 +1,5 @@
 import {
+  MAX_RECOMMENDATION_GENERATIONS_PER_USER_PER_DAY,
   type RecommendationQuizRequest,
   type RecommendationQuizResponse,
   recommendationQuizRequestSchema,
@@ -267,6 +268,12 @@ export function RecommendationQuiz() {
             Responda sete perguntas sobre suas preferências para encontrar
             leituras que combinam com o seu momento.
           </p>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
+            Limite por conta: até {MAX_RECOMMENDATION_GENERATIONS_PER_USER_PER_DAY}{" "}
+            gerações de recomendações por dia. Cada envio conta como uma
+            tentativa, mesmo se houver falha temporária. O limite renova à
+            meia-noite, no horário de Brasília.
+          </p>
         </header>
 
         <div className="mb-6">
@@ -421,7 +428,11 @@ export function RecommendationQuiz() {
             <div className="mt-4">
               <ErrorState
                 message={recommendationMutation.error.message}
-                onRetry={handleRetry}
+                onRetry={
+                  recommendationMutation.error.code === "RATE_LIMITED"
+                    ? undefined
+                    : handleRetry
+                }
               />
             </div>
           )}

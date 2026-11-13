@@ -39,20 +39,20 @@ function setup() {
   const getRecommendations = vi
     .fn<RecommendationProvider["getRecommendations"]>()
     .mockResolvedValue(response);
-  const consumeDailySlot = vi.fn().mockResolvedValue(true);
+  const consumeDailySlots = vi.fn().mockResolvedValue("allowed");
   return {
     getRecommendations,
     service: createRecommendationsService({
-      dailyLimit: 20,
+      globalDailyLimit: 20,
       provider: { getRecommendations },
-      usage: { consumeDailySlot },
+      usage: { consumeDailySlots },
     }),
   };
 }
 describe("recommendationsService", () => {
   it("returns validated suggestions without catalog metadata", async () => {
     const { service, getRecommendations } = setup();
-    await expect(service.getRecommendations(answers)).resolves.toEqual(
+    await expect(service.getRecommendations("user-1", answers)).resolves.toEqual(
       response,
     );
     expect(getRecommendations).toHaveBeenCalledExactlyOnceWith(answers);
@@ -65,7 +65,7 @@ describe("recommendationsService", () => {
       "INTEGRATION_ERROR",
     );
     getRecommendations.mockRejectedValue(error);
-    await expect(service.getRecommendations(answers)).rejects.toBe(error);
+    await expect(service.getRecommendations("user-1", answers)).rejects.toBe(error);
   });
   it.each([
     { recommendations: response.recommendations.slice(0, 2) },
@@ -85,7 +85,7 @@ describe("recommendationsService", () => {
   ])("rejects invalid provider output without exposing it", async (invalid) => {
     const { service, getRecommendations } = setup();
     getRecommendations.mockResolvedValue(invalid as RecommendationQuizResponse);
-    await expect(service.getRecommendations(answers)).rejects.toMatchObject({
+    await expect(service.getRecommendations("user-1", answers)).rejects.toMatchObject({
       statusCode: 502,
       code: "INTEGRATION_ERROR",
       message: "Não foi possível gerar recomendações",

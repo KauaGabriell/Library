@@ -75,7 +75,7 @@ app.register(fastifyRateLimit, {
 app.register(multipart, multipartConfig);
 
 const recommendationsService = createRecommendationsService({
-  dailyLimit: envConfig.RECOMMENDATION_GLOBAL_DAILY_LIMIT,
+  globalDailyLimit: envConfig.RECOMMENDATION_GLOBAL_DAILY_LIMIT,
   provider: createGeminiRecommendationProvider({
     client: new GoogleGenAI({ apiKey: envConfig.GEMINI_API_KEY }),
     model: envConfig.GEMINI_RECOMMENDATION_MODEL,

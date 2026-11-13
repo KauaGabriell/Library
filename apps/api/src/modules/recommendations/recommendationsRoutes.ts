@@ -44,6 +44,7 @@ export const recommendationsRoutes: FastifyPluginAsync<
       }
 
       const recommendations = await recommendationsService.getRecommendations(
+        request.user.id,
         request.body,
         createProviderCallContext(request.id, request.log),
       );

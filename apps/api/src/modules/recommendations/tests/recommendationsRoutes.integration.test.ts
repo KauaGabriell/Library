@@ -13,6 +13,9 @@ const recommendationMocks = vi.hoisted(() => ({
   search: vi.fn(),
   dailyUsageUpsert: vi.fn(),
   dailyUsageUpdateMany: vi.fn(),
+  userDailyUsageUpsert: vi.fn(),
+  userDailyUsageUpdateMany: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -30,6 +33,11 @@ vi.mock("../../../lib/prisma", () => ({
       upsert: recommendationMocks.dailyUsageUpsert,
       updateMany: recommendationMocks.dailyUsageUpdateMany,
     },
+    recommendationUserDailyUsage: {
+      upsert: recommendationMocks.userDailyUsageUpsert,
+      updateMany: recommendationMocks.userDailyUsageUpdateMany,
+    },
+    $transaction: recommendationMocks.transaction,
     $queryRaw: vi.fn(),
   },
 }));
@@ -137,6 +145,23 @@ beforeEach(() => {
   recommendationMocks.dailyUsageUpdateMany
     .mockReset()
     .mockResolvedValue({ count: 1 });
+  recommendationMocks.userDailyUsageUpsert.mockReset().mockResolvedValue({});
+  recommendationMocks.userDailyUsageUpdateMany
+    .mockReset()
+    .mockResolvedValue({ count: 1 });
+  recommendationMocks.transaction.mockReset().mockImplementation(
+    async (callback: (transaction: unknown) => Promise<unknown>) =>
+      callback({
+        recommendationDailyUsage: {
+          upsert: recommendationMocks.dailyUsageUpsert,
+          updateMany: recommendationMocks.dailyUsageUpdateMany,
+        },
+        recommendationUserDailyUsage: {
+          upsert: recommendationMocks.userDailyUsageUpsert,
+          updateMany: recommendationMocks.userDailyUsageUpdateMany,
+        },
+      }),
+  );
 });
 
 afterAll(async () => {

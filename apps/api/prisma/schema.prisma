@@ -29,6 +29,7 @@ model User {
   sessions       Session[]
   libraryEntries LibraryEntry[]
   readingGoals   ReadingGoal[]
+  recommendationDailyUsages RecommendationUserDailyUsage[]
 
   @@map("users")
 }
@@ -139,4 +140,14 @@ model RecommendationDailyUsage {
   requestCount Int      @default(0) @map("request_count")
 
   @@map("recommendation_daily_usage")
+}
+
+model RecommendationUserDailyUsage {
+  userId       String   @map("user_id")
+  usageDate    DateTime @db.Date @map("usage_date")
+  requestCount Int      @default(0) @map("request_count")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, usageDate])
+  @@map("recommendation_user_daily_usage")
 }
