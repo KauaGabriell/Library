@@ -133,3 +133,10 @@ model ReadingGoal {
   @@index([userId, year])
   @@map("reading_goals")
 }
+
+model RecommendationDailyUsage {
+  usageDate    DateTime @id @db.Date @map("usage_date")
+  requestCount Int      @default(0) @map("request_count")
+
+  @@map("recommendation_daily_usage")
+}

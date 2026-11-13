@@ -26,6 +26,7 @@ import { readingGoalRoutes } from "./modules/readingGoal/readingGoalRoutes";
 import { createGeminiRecommendationProvider } from "./modules/recommendations/geminiRecommendationAdapter";
 import { recommendationsRoutes } from "./modules/recommendations/recommendationsRoutes";
 import { createRecommendationsService } from "./modules/recommendations/recommendationsService";
+import { recommendationUsageRepository } from "./modules/recommendations/recommendationUsageRepository";
 import prismaPlugin from "./plugins/prisma";
 
 const app = Fastify({ logger: loggerConfig });
@@ -74,10 +75,12 @@ app.register(fastifyRateLimit, {
 app.register(multipart, multipartConfig);
 
 const recommendationsService = createRecommendationsService({
+  dailyLimit: envConfig.RECOMMENDATION_GLOBAL_DAILY_LIMIT,
   provider: createGeminiRecommendationProvider({
     client: new GoogleGenAI({ apiKey: envConfig.GEMINI_API_KEY }),
     model: envConfig.GEMINI_RECOMMENDATION_MODEL,
   }),
+  usage: recommendationUsageRepository,
 });
 
 app.register(authRoutes, { prefix: "/auth" });

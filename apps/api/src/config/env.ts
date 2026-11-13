@@ -14,6 +14,7 @@ const envSchema = z.object({
   GOOGLE_BOOKS_API_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_RECOMMENDATION_MODEL: z.string().min(1).default("gemini-3.8-flash"),
+  RECOMMENDATION_GLOBAL_DAILY_LIMIT: z.coerce.number().int().positive().default(20),
 });
 
 const envConfig = envSchema.parse(process.env);

@@ -39,9 +39,14 @@ function setup() {
   const getRecommendations = vi
     .fn<RecommendationProvider["getRecommendations"]>()
     .mockResolvedValue(response);
+  const consumeDailySlot = vi.fn().mockResolvedValue(true);
   return {
     getRecommendations,
-    service: createRecommendationsService({ provider: { getRecommendations } }),
+    service: createRecommendationsService({
+      dailyLimit: 20,
+      provider: { getRecommendations },
+      usage: { consumeDailySlot },
+    }),
   };
 }
 describe("recommendationsService", () => {
